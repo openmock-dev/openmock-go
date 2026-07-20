@@ -11,6 +11,8 @@ import (
 
 var supportedVersionPattern = regexp.MustCompile(`^0\.2\.\d+$`)
 
+var httpMethodPattern = regexp.MustCompile(`^[A-Za-z]+$`)
+
 // Parse parses and validates an OpenMock document (spec §3). A document that
 // violates any requirement of spec §3.6 is refused: Parse returns a non-nil
 // error and no Document — never a partially usable one.
@@ -107,8 +109,9 @@ func parseInfo(n *yaml.Node) (*Info, error) {
 			info.Version = val.Value
 		case key == "description":
 			info.Description = val.Value
-		case isExtensionKey(key):
 		default:
+			// info is not one of spec §11's extension-carrying objects, so
+			// x- keys are unknown fields here too.
 			return nil, fmt.Errorf("openmock: line %d: unknown field %q in 'info'", kv[0].Line, key)
 		}
 	}
@@ -144,6 +147,8 @@ func parseServer(n *yaml.Node) (*Server, error) {
 	s := &Server{}
 	var opsNode *yaml.Node
 	seenName, seenType := false, false
+	seenDescriptorSet, seenSchema := false, false
+	descriptorSetLine, schemaLine := 0, 0
 	for _, kv := range mapPairs(n) {
 		key, val := kv[0].Value, kv[1]
 		switch {
@@ -164,11 +169,18 @@ func parseServer(n *yaml.Node) (*Server, error) {
 			if err != nil {
 				return nil, fmt.Errorf("openmock: line %d: 'port' must be an integer", val.Line)
 			}
+			if p < 1 || p > 65535 {
+				return nil, fmt.Errorf("openmock: line %d: 'port' must be between 1 and 65535", val.Line)
+			}
 			s.Port = &p
 		case key == "descriptorSet":
 			s.DescriptorSet = val.Value
+			seenDescriptorSet = true
+			descriptorSetLine = kv[0].Line
 		case key == "schema":
 			s.Schema = val.Value
+			seenSchema = true
+			schemaLine = kv[0].Line
 		case key == "operations":
 			opsNode = val
 		case isExtensionKey(key):
@@ -181,6 +193,24 @@ func parseServer(n *yaml.Node) (*Server, error) {
 	}
 	if !seenType {
 		return nil, fmt.Errorf("openmock: line %d: server %q requires a 'type'", n.Line, s.Name)
+	}
+	// Checked after the loop because 'type' may appear after these keys in
+	// the mapping.
+	if seenDescriptorSet {
+		if s.Type != ServerGRPC {
+			return nil, fmt.Errorf("openmock: line %d: 'descriptorSet' is only valid on a grpc server", descriptorSetLine)
+		}
+		if s.DescriptorSet == "" {
+			return nil, fmt.Errorf("openmock: line %d: 'descriptorSet' must be a non-empty string", descriptorSetLine)
+		}
+	}
+	if seenSchema {
+		if s.Type != ServerGraphQL {
+			return nil, fmt.Errorf("openmock: line %d: 'schema' is only valid on a graphql server", schemaLine)
+		}
+		if s.Schema == "" {
+			return nil, fmt.Errorf("openmock: line %d: 'schema' must be a non-empty string", schemaLine)
+		}
 	}
 	if opsNode == nil || opsNode.Kind != yaml.SequenceNode || len(opsNode.Content) == 0 {
 		return nil, fmt.Errorf("openmock: line %d: server %q requires a non-empty 'operations' list", n.Line, s.Name)
@@ -210,6 +240,9 @@ func parseOperation(n *yaml.Node, serverType ServerType) (*Operation, error) {
 		key, val := kv[0].Value, kv[1]
 		switch {
 		case key == "method" && (serverType == ServerHTTP):
+			if !httpMethodPattern.MatchString(val.Value) {
+				return nil, fmt.Errorf("openmock: line %d: 'method' must be one or more ASCII letters", val.Line)
+			}
 			op.Method = val.Value
 			seenMethod = true
 		case key == "path" && (serverType == ServerHTTP || serverType == ServerWebSocket):
@@ -264,20 +297,25 @@ func parseOperation(n *yaml.Node, serverType ServerType) (*Operation, error) {
 			return nil, fmt.Errorf("openmock: line %d: a WebSocket operation requires 'path'", n.Line)
 		}
 	case ServerGRPC:
-		if !seenService {
-			return nil, fmt.Errorf("openmock: line %d: a gRPC operation requires 'service'", n.Line)
+		if !seenService || op.Service == "" {
+			return nil, fmt.Errorf("openmock: line %d: a gRPC operation requires a non-empty 'service'", n.Line)
 		}
-		if !seenRPC {
-			return nil, fmt.Errorf("openmock: line %d: a gRPC operation requires 'rpc'", n.Line)
+		if !seenRPC || op.RPC == "" {
+			return nil, fmt.Errorf("openmock: line %d: a gRPC operation requires a non-empty 'rpc'", n.Line)
 		}
 	case ServerGraphQL:
-		if !seenOperationName {
-			return nil, fmt.Errorf("openmock: line %d: a GraphQL operation requires 'operationName'", n.Line)
+		if !seenOperationName || op.OperationName == "" {
+			return nil, fmt.Errorf("openmock: line %d: a GraphQL operation requires a non-empty 'operationName'", n.Line)
 		}
 	}
 	if scenariosNode == nil || scenariosNode.Kind != yaml.SequenceNode || len(scenariosNode.Content) == 0 {
 		return nil, fmt.Errorf("openmock: line %d: an operation requires a non-empty 'scenarios' list", n.Line)
 	}
+	// Duplicate scenario names are deliberately not rejected: spec §6 calls
+	// the name "unique within the operation", but §3.6's invalidity list
+	// omits it, the JSON Schema cannot express it, and duplicates are benign
+	// under first-match-wins — rejecting would make this engine stricter
+	// than other conformant ones.
 	scenarios := make([]*Scenario, 0, len(scenariosNode.Content))
 	for _, item := range scenariosNode.Content {
 		sc, err := parseScenario(item, serverType, op.Type)
@@ -358,15 +396,14 @@ func facetAllowed(facet string, serverType ServerType) bool {
 }
 
 func parseWhen(n *yaml.Node, serverType ServerType) (*When, error) {
-	if n.Kind != yaml.MappingNode {
-		return nil, fmt.Errorf("openmock: line %d: 'when' must be a mapping", n.Line)
+	if n.Kind != yaml.MappingNode || len(n.Content) == 0 {
+		return nil, fmt.Errorf("openmock: line %d: 'when' must declare at least one facet", n.Line)
 	}
 	w := &When{}
 	for _, kv := range mapPairs(n) {
 		key, val := kv[0].Value, kv[1]
-		if isExtensionKey(key) {
-			continue
-		}
+		// when is not one of spec §11's extension-carrying objects, so an
+		// x- key falls through to the unknown-facet rejection below.
 		if !facetAllowed(key, serverType) {
 			return nil, fmt.Errorf("openmock: line %d: facet %q is not valid under a %s operation", kv[0].Line, key, serverType)
 		}
@@ -635,6 +672,9 @@ func parseResponse(n *yaml.Node, serverType ServerType, callType CallType) (*Res
 				if err != nil {
 					return nil, fmt.Errorf("openmock: line %d: 'status' must be an integer", val.Line)
 				}
+				if s < 100 || s > 599 {
+					return nil, fmt.Errorf("openmock: line %d: 'status' must be between 100 and 599", val.Line)
+				}
 				r.Status = s
 				seenStatus = true
 			case "headers":
@@ -680,9 +720,10 @@ func parseResponse(n *yaml.Node, serverType ServerType, callType CallType) (*Res
 				if callType != CallServerStreaming {
 					return nil, fmt.Errorf("openmock: line %d: 'messages' is only valid on a server-streaming operation's response; use 'message'", val.Line)
 				}
-				v := nodeToValue(val)
-				list, _ := v.([]any)
-				r.Messages = list
+				if val.Kind != yaml.SequenceNode {
+					return nil, fmt.Errorf("openmock: line %d: 'messages' must be a list", val.Line)
+				}
+				r.Messages = nodeToValue(val).([]any)
 				r.messagesSet = true
 			default:
 				return nil, fmt.Errorf("openmock: line %d: field %q is not valid on a gRPC response", kv[0].Line, key)
@@ -704,9 +745,10 @@ func parseResponse(n *yaml.Node, serverType ServerType, callType CallType) (*Res
 		case ServerWebSocket:
 			switch key {
 			case "messages":
-				v := nodeToValue(val)
-				list, _ := v.([]any)
-				r.WSMessages = list
+				if val.Kind != yaml.SequenceNode {
+					return nil, fmt.Errorf("openmock: line %d: 'messages' must be a list", val.Line)
+				}
+				r.WSMessages = nodeToValue(val).([]any)
 				r.wsMessagesSet = true
 			case "close":
 				cs, err := parseCloseSpec(val)
@@ -755,6 +797,9 @@ func parseHeaderMap(n *yaml.Node) (map[string]HeaderTemplate, error) {
 		case yaml.ScalarNode:
 			out[key] = HeaderTemplate{Values: []string{val.Value}}
 		case yaml.SequenceNode:
+			if len(val.Content) == 0 {
+				return nil, fmt.Errorf("openmock: line %d: a header value list must be non-empty", val.Line)
+			}
 			vals := make([]string, len(val.Content))
 			for i, item := range val.Content {
 				if item.Kind != yaml.ScalarNode {
@@ -796,6 +841,9 @@ func parseCloseSpec(n *yaml.Node) (*CloseSpec, error) {
 			c, err := strconv.Atoi(val.Value)
 			if err != nil {
 				return nil, fmt.Errorf("openmock: line %d: 'close.code' must be an integer", val.Line)
+			}
+			if c < 1000 || c > 4999 {
+				return nil, fmt.Errorf("openmock: line %d: 'close.code' must be between 1000 and 4999", val.Line)
 			}
 			cs.Code = c
 		case "reason":
