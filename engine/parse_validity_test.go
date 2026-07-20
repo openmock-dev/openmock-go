@@ -217,6 +217,63 @@ servers:
             response:
               messages: []
 `, ""},
+
+		// --- GraphQL errors: $defs/graphqlError ---
+		{"errors non-list", graphqlDocErrors(`{message: boom}`), "'errors'"},
+		{"errors empty list", graphqlDocErrors(`[]`), "'errors'"},
+		{"error missing message", graphqlDocErrors(`
+                - path: [order]
+`), "'message'"},
+		{"error message not a string", graphqlDocErrors(`
+                - message: 123
+`), "'message'"},
+		{"error unknown member", graphqlDocErrors(`
+                - message: boom
+                  code: NOT_FOUND
+`), "unknown field"},
+		{"error x- member", graphqlDocErrors(`
+                - message: boom
+                  x-hint: retry
+`), "unknown field"},
+		{"location line zero", graphqlDocErrors(`
+                - message: boom
+                  locations:
+                    - {line: 0, column: 1}
+`), "'line'"},
+		{"location missing column", graphqlDocErrors(`
+                - message: boom
+                  locations:
+                    - {line: 1}
+`), "'column'"},
+		{"location extra member", graphqlDocErrors(`
+                - message: boom
+                  locations:
+                    - {line: 1, column: 1, file: a.graphql}
+`), "unknown field"},
+		{"path negative integer", graphqlDocErrors(`
+                - message: boom
+                  path: [order, -1]
+`), "path"},
+		{"path fractional number", graphqlDocErrors(`
+                - message: boom
+                  path: [order, 1.5]
+`), "path"},
+		{"path mapping element", graphqlDocErrors(`
+                - message: boom
+                  path: [{}]
+`), "path"},
+		{"extensions non-mapping", graphqlDocErrors(`
+                - message: boom
+                  extensions: oops
+`), "'extensions'"},
+		{"full valid error ok", graphqlDocErrors(`
+                - message: order not found
+                  locations:
+                    - {line: 2, column: 7}
+                  path: [order, 0]
+                  extensions:
+                    code: NOT_FOUND
+`), ""},
 	}
 
 	for _, tc := range cases {
@@ -323,6 +380,26 @@ servers:
               messages: []
               close:
                 code: ` + code + `
+`
+}
+
+// graphqlDocErrors returns a GraphQL document whose response carries the
+// given errors value (either inline flow or an indented block starting on
+// the next line).
+func graphqlDocErrors(errors string) string {
+	return `
+openmock: 0.2.0
+servers:
+  - name: main
+    type: graphql
+    operations:
+      - operationName: GetOrder
+        scenarios:
+          - name: err
+            response:
+              data:
+                order: null
+              errors: ` + errors + `
 `
 }
 

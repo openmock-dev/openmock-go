@@ -734,9 +734,15 @@ func parseResponse(n *yaml.Node, serverType ServerType, callType CallType) (*Res
 				r.Data = nodeToValue(val)
 				r.dataSet = true
 			case "errors":
-				v := nodeToValue(val)
-				list, _ := v.([]any)
-				r.Errors = list
+				if val.Kind != yaml.SequenceNode || len(val.Content) == 0 {
+					return nil, fmt.Errorf("openmock: line %d: 'errors' must be a non-empty list", val.Line)
+				}
+				for _, item := range val.Content {
+					if err := validateGraphQLError(item); err != nil {
+						return nil, err
+					}
+				}
+				r.Errors = nodeToValue(val).([]any)
 			case "extensions":
 				r.Extensions = nodeToValue(val)
 			default:
@@ -827,6 +833,102 @@ func parseGRPCStringMap(n *yaml.Node) (map[string]string, error) {
 		out[kv[0].Value] = kv[1].Value
 	}
 	return out, nil
+}
+
+// validateGraphQLError validates one entry of a GraphQL response's errors
+// list against the error-object shape of spec §7.4: 'message' is required,
+// and the four members the GraphQL specification defines are the only ones
+// permitted (no extension keys either — the schema forbids them here).
+func validateGraphQLError(n *yaml.Node) error {
+	if n.Kind != yaml.MappingNode {
+		return fmt.Errorf("openmock: line %d: a GraphQL error must be a mapping", n.Line)
+	}
+	seenMessage := false
+	for _, kv := range mapPairs(n) {
+		key, val := kv[0].Value, kv[1]
+		switch key {
+		case "message":
+			if _, ok := scalarValue(val).(string); val.Kind != yaml.ScalarNode || !ok {
+				return fmt.Errorf("openmock: line %d: a GraphQL error's 'message' must be a string", val.Line)
+			}
+			seenMessage = true
+		case "locations":
+			if val.Kind != yaml.SequenceNode {
+				return fmt.Errorf("openmock: line %d: a GraphQL error's 'locations' must be a list", val.Line)
+			}
+			for _, loc := range val.Content {
+				if err := validateGraphQLErrorLocation(loc); err != nil {
+					return err
+				}
+			}
+		case "path":
+			if val.Kind != yaml.SequenceNode {
+				return fmt.Errorf("openmock: line %d: a GraphQL error's 'path' must be a list", val.Line)
+			}
+			for _, elem := range val.Content {
+				if !isGraphQLPathElement(elem) {
+					return fmt.Errorf("openmock: line %d: a GraphQL error path element must be a string or a non-negative integer", elem.Line)
+				}
+			}
+		case "extensions":
+			if val.Kind != yaml.MappingNode {
+				return fmt.Errorf("openmock: line %d: a GraphQL error's 'extensions' must be a mapping", val.Line)
+			}
+		default:
+			return fmt.Errorf("openmock: line %d: unknown field %q on a GraphQL error", kv[0].Line, key)
+		}
+	}
+	if !seenMessage {
+		return fmt.Errorf("openmock: line %d: a GraphQL error requires 'message'", n.Line)
+	}
+	return nil
+}
+
+func validateGraphQLErrorLocation(n *yaml.Node) error {
+	if n.Kind != yaml.MappingNode {
+		return fmt.Errorf("openmock: line %d: a GraphQL error location must be a mapping", n.Line)
+	}
+	seenLine, seenColumn := false, false
+	for _, kv := range mapPairs(n) {
+		key, val := kv[0].Value, kv[1]
+		switch key {
+		case "line", "column":
+			v, err := strconv.Atoi(val.Value)
+			if err != nil || v < 1 {
+				return fmt.Errorf("openmock: line %d: a location's '%s' must be a positive integer", val.Line, key)
+			}
+			if key == "line" {
+				seenLine = true
+			} else {
+				seenColumn = true
+			}
+		default:
+			return fmt.Errorf("openmock: line %d: unknown field %q on a GraphQL error location", kv[0].Line, key)
+		}
+	}
+	if !seenLine {
+		return fmt.Errorf("openmock: line %d: a GraphQL error location requires 'line'", n.Line)
+	}
+	if !seenColumn {
+		return fmt.Errorf("openmock: line %d: a GraphQL error location requires 'column'", n.Line)
+	}
+	return nil
+}
+
+// isGraphQLPathElement reports whether n is a legal GraphQL error path
+// element: a string, or a non-negative integer (a response-list index).
+func isGraphQLPathElement(n *yaml.Node) bool {
+	if n.Kind != yaml.ScalarNode {
+		return false
+	}
+	switch v := scalarValue(n).(type) {
+	case string:
+		return true
+	case float64:
+		return v >= 0 && v == float64(int64(v))
+	default:
+		return false
+	}
 }
 
 func parseCloseSpec(n *yaml.Node) (*CloseSpec, error) {
