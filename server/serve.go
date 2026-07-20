@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 
+	"google.golang.org/grpc"
+
 	"github.com/openmock-dev/openmock-go/engine"
 )
 
@@ -27,6 +29,10 @@ type Options struct {
 	// Logf receives startup diagnostics (the name -> port topology, §2). Nil
 	// discards them.
 	Logf func(format string, args ...any)
+	// BaseDir is the directory a gRPC server's descriptorSet path is resolved
+	// against (spec §3.4/§14). Empty means the current directory. The CLI
+	// sets it to the document's directory.
+	BaseDir string
 }
 
 func (o Options) bindHost() string {
@@ -61,6 +67,7 @@ type Server struct {
 	bindHost  string
 	topology  []ServerInfo
 	mockSrvs  []*http.Server
+	grpcSrvs  []*grpc.Server
 	adminSrv  *http.Server
 	adminAddr string
 
@@ -104,25 +111,56 @@ func Serve(doc *engine.Document, opts Options) (*Server, error) {
 		}
 	}
 	for _, srv := range doc.Servers {
-		if srv.Type != engine.ServerHTTP {
+		switch srv.Type {
+		case engine.ServerHTTP:
+			rp := byName[srv.Name]
+			l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.bindHost, rp.port))
+			if err != nil {
+				closeAll()
+				return nil, fmt.Errorf("binding %q to port %d (%s): %w", srv.Name, rp.port, rp.source, err)
+			}
+			listeners = append(listeners, l)
+			port := l.Addr().(*net.TCPAddr).Port
+			s.topology = append(s.topology, s.httpInfo(srv.Name, port))
+			hs := &http.Server{Handler: NewHandler(s.engine, srv.Name)}
+			s.mockSrvs = append(s.mockSrvs, hs)
+			s.serveOn(hs, l)
+			opts.logf("serving %q on http://%s:%d", srv.Name, dialHost(s.bindHost), port)
+
+		case engine.ServerGRPC:
+			// A gRPC server is served only with a descriptorSet — its schema
+			// is what lets the transport decode and encode wire bytes (spec
+			// §3.4). Without a loadable one, leave it unbound with a
+			// diagnostic, exactly as if the field were absent.
+			if srv.DescriptorSet == "" {
+				s.topology = append(s.topology, unboundInfo(srv))
+				opts.logf("server %q (grpc) declared but not served: no descriptorSet (needed to decode protobuf)", srv.Name)
+				continue
+			}
+			schema, err := loadDescriptor(opts.BaseDir, srv)
+			if err != nil {
+				s.topology = append(s.topology, unboundInfo(srv))
+				opts.logf("server %q (grpc) declared but not served: %v", srv.Name, err)
+				continue
+			}
+			rp := byName[srv.Name]
+			l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.bindHost, rp.port))
+			if err != nil {
+				closeAll()
+				return nil, fmt.Errorf("binding %q to port %d (%s): %w", srv.Name, rp.port, rp.source, err)
+			}
+			listeners = append(listeners, l)
+			port := l.Addr().(*net.TCPAddr).Port
+			s.topology = append(s.topology, s.grpcInfo(srv.Name, port))
+			gs := newGRPCServer(s.engine, srv.Name, schema)
+			s.grpcSrvs = append(s.grpcSrvs, gs)
+			s.serveGRPC(gs, l)
+			opts.logf("serving %q on grpc://%s:%d", srv.Name, dialHost(s.bindHost), port)
+
+		default:
 			s.topology = append(s.topology, unboundInfo(srv))
-			opts.logf("server %q (%s) declared but not served: only HTTP is supported so far", srv.Name, srv.Type)
-			continue
+			opts.logf("server %q (%s) declared but not served: that protocol is not supported yet", srv.Name, srv.Type)
 		}
-		rp := byName[srv.Name]
-		addr := fmt.Sprintf("%s:%d", s.bindHost, rp.port)
-		l, err := net.Listen("tcp", addr)
-		if err != nil {
-			closeAll()
-			return nil, fmt.Errorf("binding %q to port %d (%s): %w", srv.Name, rp.port, rp.source, err)
-		}
-		listeners = append(listeners, l)
-		port := l.Addr().(*net.TCPAddr).Port
-		s.topology = append(s.topology, s.httpInfo(srv.Name, port))
-		hs := &http.Server{Handler: NewHandler(s.engine, srv.Name)}
-		s.mockSrvs = append(s.mockSrvs, hs)
-		s.serveOn(hs, l)
-		opts.logf("serving %q on http://%s:%d", srv.Name, dialHost(s.bindHost), port)
 	}
 
 	// Admin API.
@@ -154,6 +192,21 @@ func (s *Server) serveOn(hs *http.Server, l net.Listener) {
 	}()
 }
 
+func (s *Server) serveGRPC(gs *grpc.Server, l net.Listener) {
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		// grpc.Server.Serve returns nil on GracefulStop/Stop.
+		if err := gs.Serve(l); err != nil && err != grpc.ErrServerStopped {
+			s.mu.Lock()
+			if s.serveErr == nil {
+				s.serveErr = err
+			}
+			s.mu.Unlock()
+		}
+	}()
+}
+
 // Topology returns the served name -> port mapping (admin GET /servers).
 func (s *Server) Topology() []ServerInfo { return s.topology }
 
@@ -171,13 +224,18 @@ func (s *Server) Err() error {
 	return s.serveErr
 }
 
-// Shutdown gracefully stops the mock servers and the admin API.
+// Shutdown gracefully stops the mock servers (HTTP and gRPC) and the admin
+// API. A gRPC server is drained with GracefulStop, falling back to a hard
+// Stop if ctx is cancelled first.
 func (s *Server) Shutdown(ctx context.Context) error {
 	var firstErr error
 	for _, hs := range s.mockSrvs {
 		if err := hs.Shutdown(ctx); err != nil && firstErr == nil {
 			firstErr = err
 		}
+	}
+	for _, gs := range s.grpcSrvs {
+		s.stopGRPC(ctx, gs)
 	}
 	if s.adminSrv != nil {
 		if err := s.adminSrv.Shutdown(ctx); err != nil && firstErr == nil {
@@ -187,10 +245,34 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return firstErr
 }
 
+// stopGRPC drains gs gracefully, but stops hard if ctx is cancelled first so
+// a client holding a stream open cannot block shutdown past the deadline.
+func (s *Server) stopGRPC(ctx context.Context, gs *grpc.Server) {
+	done := make(chan struct{})
+	go func() {
+		gs.GracefulStop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		gs.Stop()
+		<-done
+	}
+}
+
 func (s *Server) httpInfo(name string, port int) ServerInfo {
 	transport := "http"
 	url := fmt.Sprintf("http://%s:%d", dialHost(s.bindHost), port)
 	return ServerInfo{Name: name, Type: "http", Transport: &transport, Port: &port, URL: &url}
+}
+
+// grpcInfo reports a bound gRPC server. Per docs/serving.md §3 the topology
+// carries its transport and resolved port but a null url — gRPC has no
+// dialable base URL like HTTP.
+func (s *Server) grpcInfo(name string, port int) ServerInfo {
+	transport := "grpc"
+	return ServerInfo{Name: name, Type: "grpc", Transport: &transport, Port: &port, URL: nil}
 }
 
 func unboundInfo(srv *engine.Server) ServerInfo {

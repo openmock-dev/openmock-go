@@ -1,0 +1,75 @@
+// The protobuf schema behind examples/06-grpc.yml.
+//
+// OpenMock documents never require a .proto file — messages are written as
+// native YAML following the proto3 JSON mapping (spec §4.2). This file shows
+// the schema that mock implements, and is the source for the descriptor set
+// the document attaches via `grpc.descriptorSet` (spec §3.4):
+//
+//   protoc --include_imports --descriptor_set_out=06-grpc.binpb 06-grpc.proto
+//   # or, with buf:
+//   buf build 06-grpc.proto -o 06-grpc.binpb
+//
+// Note how the proto3 JSON mapping shapes the YAML in 06-grpc.yml:
+//   - field names appear as their lowerCamelCase JSON names
+//     (order_id here → orderId in the document),
+//   - enum values appear by name (state: SHIPPED),
+//   - 64-bit integers appear as decimal strings (level: "42").
+
+syntax = "proto3";
+
+package shop.v1;
+
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (Order);
+  rpc WatchOrder(WatchOrderRequest) returns (stream OrderEvent);
+  rpc WatchInventory(WatchInventoryRequest) returns (stream InventoryLevel);
+}
+
+service ReportService {
+  rpc GetReport(GetReportRequest) returns (Report);
+}
+
+enum OrderState {
+  ORDER_STATE_UNSPECIFIED = 0;
+  CREATED = 1;
+  PAID = 2;
+  SHIPPED = 3;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message Order {
+  string id = 1;
+  OrderState state = 2;
+  string internal_notes = 3;
+}
+
+message WatchOrderRequest {
+  string order_id = 1;
+}
+
+message OrderEvent {
+  OrderState event = 1;
+  string order_id = 2;
+}
+
+message WatchInventoryRequest {}
+
+message InventoryLevel {
+  int64 level = 1;
+}
+
+enum ReportState {
+  REPORT_STATE_UNSPECIFIED = 0;
+  GENERATING = 1;
+  READY = 2;
+}
+
+message GetReportRequest {}
+
+message Report {
+  ReportState state = 1;
+  string url = 2;
+}
