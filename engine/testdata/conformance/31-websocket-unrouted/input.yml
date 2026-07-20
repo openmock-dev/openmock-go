@@ -1,0 +1,16 @@
+openmock: 0.2.0
+info:
+  title: WebSocket unrouted connection (unknown path)
+# The connection is routed once, at establishment. An unknown path is refused
+# rather than accepted — over an HTTP upgrade, with the 404 synthetic
+# response.
+servers:
+  - name: main
+    type: websocket
+    operations:
+      - path: /ws/orders/{id}
+        scenarios:
+          - name: subscribed
+            response:
+              messages:
+                - type: ack

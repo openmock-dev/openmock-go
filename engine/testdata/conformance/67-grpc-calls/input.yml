@@ -1,0 +1,26 @@
+openmock: 0.2.0
+info:
+  title: gRPC calls facet (per-operation counter)
+# The calls facet works for gRPC exactly as for HTTP: the counter is keyed
+# by service + rpc (no path parameters), so it is effectively per-operation
+# (spec §6.3).
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: poll.v1.Service
+        rpc: GetStatus
+        type: unary
+        scenarios:
+          - name: pending
+            when:
+              calls: 1
+            response:
+              status: OK
+              message:
+                state: PENDING
+          - name: done
+            response:
+              status: OK
+              message:
+                state: DONE

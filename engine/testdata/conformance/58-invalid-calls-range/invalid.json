@@ -1,0 +1,3 @@
+{
+  "reason": "The calls range has min (5) greater than max (2), which can never match: an inverted range makes the document invalid (spec §6.3) and MUST be refused at load time (spec §3.6). JSON Schema cannot compare two values, so this document passes the schema — the violation is spec-level."
+}

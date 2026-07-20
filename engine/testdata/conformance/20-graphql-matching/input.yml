@@ -1,0 +1,36 @@
+openmock: 0.2.0
+info:
+  title: GraphQL headers and variables facet matching (first-match-wins)
+servers:
+  - name: main
+    type: graphql
+    operations:
+      - operationType: query
+        operationName: GetOrder
+        scenarios:
+          # Most specific: admin header AND a specific nested variable value.
+          # Header keys match case-insensitively; variables keys are dotted paths.
+          - name: admin-priority
+            when:
+              headers:
+                X-Role: admin
+              variables:
+                filter.priority: high
+            response:
+              data:
+                view: admin-priority
+
+          # Less specific: admin header only. The request below also satisfies
+          # this, but admin-priority appears first and wins.
+          - name: admin
+            when:
+              headers:
+                X-Role: admin
+            response:
+              data:
+                view: admin
+
+          - name: default
+            response:
+              data:
+                view: default

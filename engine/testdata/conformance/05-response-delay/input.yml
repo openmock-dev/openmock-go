@@ -1,0 +1,18 @@
+openmock: 0.2.0
+info:
+  title: Response delay
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /slow
+        scenarios:
+          - name: delayed
+            response:
+              status: 200
+              delay: 750
+              headers:
+                Content-Type: application/json
+              body:
+                status: ok

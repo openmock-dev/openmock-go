@@ -1,0 +1,30 @@
+openmock: 0.2.0
+info:
+  title: A scenario after the default is unreachable
+# The default scenario (no when) always matches, so under first-match-wins
+# any scenario placed after it can never be reached (spec §6.2) — even one
+# whose when would otherwise match the request.
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /x
+        scenarios:
+          - name: default
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: default
+          - name: never
+            when:
+              headers:
+                X-Role: admin
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: never

@@ -1,0 +1,31 @@
+openmock: 0.2.0
+info:
+  title: Trailing slashes are significant (no normalization)
+servers:
+  - name: main
+    type: http
+    operations:
+      # An engine that strips trailing slashes would route /users/ here
+      # (first match). /users and /users/ are distinct paths (spec §5.2),
+      # so this MUST NOT route.
+      - method: GET
+        path: /users
+        scenarios:
+          - name: no-slash
+            response:
+              status: 200
+              body:
+                view: no-slash
+
+      # A trailing slash in a template declares a literal empty final segment,
+      # matching exactly the request path /users/.
+      - method: GET
+        path: /users/
+        scenarios:
+          - name: slash
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: slash

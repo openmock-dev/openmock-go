@@ -1,0 +1,7 @@
+{
+  "protocol": "websocket",
+  "server": "main",
+  "path": "/ws/rooms/42",
+  "query": { "lang": "en" },
+  "message": { "type": "join" }
+}

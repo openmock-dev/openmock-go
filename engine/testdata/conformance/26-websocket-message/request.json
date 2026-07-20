@@ -1,0 +1,6 @@
+{
+  "protocol": "websocket",
+  "server": "main",
+  "path": "/ws/orders/42",
+  "message": { "type": "subscribe", "requestId": "r-1" }
+}

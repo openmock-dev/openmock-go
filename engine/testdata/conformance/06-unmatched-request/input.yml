@@ -1,0 +1,22 @@
+openmock: 0.2.0
+info:
+  title: Unmatched request (no default scenario)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /users
+        scenarios:
+          # Only matches when the body role is admin. There is no default,
+          # so a non-admin request has no scenario to fall back to.
+          - name: admin-only
+            when:
+              body:
+                role: admin
+            response:
+              status: 201
+              headers:
+                Content-Type: application/json
+              body:
+                created: true

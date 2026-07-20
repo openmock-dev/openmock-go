@@ -1,0 +1,36 @@
+openmock: 0.2.0
+info:
+  title: WebSocket headers and message facet matching (first-match-wins)
+servers:
+  - name: main
+    type: websocket
+    operations:
+      - path: /ws/orders
+        scenarios:
+          # Most specific: an admin connection AND a specific nested message
+          # value. Header keys (from the connection's upgrade request) match
+          # case-insensitively; message keys are dotted paths.
+          - name: admin-priority
+            when:
+              headers:
+                X-Role: admin
+              message:
+                filter.priority: high
+            response:
+              messages:
+                - view: admin-priority
+
+          # Less specific: an admin connection only. The request below also
+          # satisfies this, but admin-priority appears first and wins.
+          - name: admin
+            when:
+              headers:
+                X-Role: admin
+            response:
+              messages:
+                - view: admin
+
+          - name: default
+            response:
+              messages:
+                - view: default

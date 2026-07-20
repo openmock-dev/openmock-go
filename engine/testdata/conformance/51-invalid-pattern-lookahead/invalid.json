@@ -1,0 +1,3 @@
+{
+  "reason": "The pattern \"(?=ord)o.*\" uses lookahead, which RE2 does not support. Patterns are RE2 only (spec §6.1); implementations whose regex engines accept more MUST still reject non-RE2 patterns, at load time (spec §3.6). This document passes the JSON Schema — pattern validity is spec-level."
+}

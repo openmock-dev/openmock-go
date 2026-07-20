@@ -1,0 +1,6 @@
+{
+  "status": "OK",
+  "metadata": { "x-mock": "true" },
+  "trailers": { "x-request-id": "req-7", "x-cache": "miss" },
+  "message": { "id": "42", "state": "SHIPPED" }
+}

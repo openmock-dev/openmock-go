@@ -1,0 +1,22 @@
+openmock: 0.2.0
+info:
+  title: Faker substitution
+# Faker output is non-deterministic in general. The corpus runs in
+# conformance mode (spec §9.3): each placeholder MUST produce exactly the
+# reference value documented in conformance/README.md ("Faker determinism").
+# This case asserts those reference values.
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /generate
+        scenarios:
+          - name: generated
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                name: "{{faker.person.fullName}}"
+                token: "{{faker.string.uuid}}"

@@ -1,0 +1,7 @@
+{
+  "protocol": "websocket",
+  "server": "main",
+  "path": "/ws/orders",
+  "headers": { "x-role": "admin" },
+  "message": { "type": "subscribe", "filter": { "priority": "high" } }
+}

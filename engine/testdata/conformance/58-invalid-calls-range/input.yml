@@ -1,0 +1,28 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: inverted calls range"
+# min > max can never match (spec §6.3), so the document is invalid and
+# MUST be refused at load time (§3.6). JSON Schema cannot compare min and
+# max, so this document PASSES the schema — the violation is spec-level,
+# like an unknown faker or a malformed pattern.
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /poll
+        scenarios:
+          - name: impossible
+            when:
+              calls:
+                min: 5
+                max: 2
+            response:
+              status: 200
+              body:
+                view: impossible
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

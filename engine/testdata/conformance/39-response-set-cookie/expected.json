@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json",
+    "Set-Cookie": [
+      "session=ada; Path=/; HttpOnly",
+      "theme=dark; Path=/"
+    ]
+  },
+  "body": {
+    "ok": true
+  }
+}

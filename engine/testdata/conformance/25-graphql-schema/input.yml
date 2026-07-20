@@ -1,0 +1,20 @@
+openmock: 0.2.0
+
+# The document attaches its GraphQL type system through the standard
+# graphql.schema field (spec §3.5). Engines that consume the schema and
+# engines that ignore it MUST produce the same response for the normalized
+# request — the field never changes what a document means.
+servers:
+  - name: main
+    type: graphql
+    schema: ./shop.graphql
+    operations:
+      - operationType: query
+        operationName: GetOrder
+        scenarios:
+          - name: found
+            response:
+              data:
+                order:
+                  id: "{{request.variables.orderId}}"
+                  state: SHIPPED

@@ -1,0 +1,19 @@
+openmock: 0.2.0
+info:
+  title: Method matching is case-insensitive
+servers:
+  - name: main
+    type: http
+    operations:
+      # The request below uses the method "get"; it matches the GET operation
+      # (spec §5.1 — method comparison is case-insensitive).
+      - method: GET
+        path: /ping
+        scenarios:
+          - name: pong
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                pong: true

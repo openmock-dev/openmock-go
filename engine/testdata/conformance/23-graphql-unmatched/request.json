@@ -1,0 +1,7 @@
+{
+  "protocol": "graphql",
+  "server": "main",
+  "operationType": "mutation",
+  "operationName": "CancelOrder",
+  "variables": { "state": "SHIPPED" }
+}

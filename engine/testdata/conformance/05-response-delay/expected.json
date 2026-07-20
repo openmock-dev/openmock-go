@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "delay": 750,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "status": "ok"
+  }
+}

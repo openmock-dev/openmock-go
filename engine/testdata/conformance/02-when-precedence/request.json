@@ -1,0 +1,11 @@
+{
+  "server": "main",
+  "method": "GET",
+  "path": "/users/7",
+  "query": {
+    "verbose": "true"
+  },
+  "headers": {
+    "X-Role": "admin"
+  }
+}

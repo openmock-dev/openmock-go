@@ -1,0 +1,19 @@
+openmock: 0.2.0
+info:
+  title: GraphQL unmatched request (no default scenario)
+servers:
+  - name: main
+    type: graphql
+    operations:
+      - operationType: mutation
+        operationName: CancelOrder
+        scenarios:
+          # Only cancellable orders are mapped; there is no default scenario.
+          - name: cancellable
+            when:
+              variables:
+                state: PENDING
+            response:
+              data:
+                cancelOrder:
+                  cancelled: true

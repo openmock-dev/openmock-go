@@ -1,0 +1,26 @@
+openmock: 0.2.0
+info:
+  title: WebSocket close reasons are templatable
+servers:
+  - name: main
+    type: websocket
+    operations:
+      # close.reason may contain templating placeholders (spec §7.5/§9) — the
+      # same scope as reply messages.
+      - path: /ws/session
+        scenarios:
+          - name: logout
+            when:
+              message:
+                type: logout
+            response:
+              messages:
+                - type: goodbye
+              close:
+                code: 1000
+                reason: "bye {{request.message.user}}"
+
+          - name: default
+            response:
+              messages:
+                - type: ack

@@ -1,0 +1,59 @@
+openmock: 0.2.0
+info:
+  title: Repeated gRPC request metadata joins with a comma and space
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          # Two x-tag metadata entries (alpha, beta) normalize to the single
+          # value "alpha, beta" (spec §4.6) — the same rule as HTTP request
+          # headers. An engine keeping only the first entry would match here —
+          # this MUST NOT match.
+          - name: first-wins
+            when:
+              metadata:
+                x-tag: alpha
+            response:
+              status: OK
+              message:
+                view: first-wins
+
+          # An engine keeping only the last entry MUST NOT match either.
+          - name: last-wins
+            when:
+              metadata:
+                x-tag: beta
+            response:
+              status: OK
+              message:
+                view: last-wins
+
+          # An engine joining without the space MUST NOT match.
+          - name: joined-no-space
+            when:
+              metadata:
+                x-tag: alpha,beta
+            response:
+              status: OK
+              message:
+                view: joined-no-space
+
+          - name: joined
+            when:
+              metadata:
+                x-tag: alpha, beta
+            response:
+              status: OK
+              message:
+                view: joined
+                tag: "{{request.metadata.x-tag}}"
+
+          - name: default
+            response:
+              status: OK
+              message:
+                view: default

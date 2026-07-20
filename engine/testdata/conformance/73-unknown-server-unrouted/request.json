@@ -1,0 +1,5 @@
+{
+  "server": "billing-api",
+  "method": "GET",
+  "path": "/health"
+}

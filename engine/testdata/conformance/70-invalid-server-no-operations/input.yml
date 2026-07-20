@@ -1,0 +1,10 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: a server with no operations"
+# A declared server must carry at least one operation (spec §3.3): a server
+# that mocks nothing — even one that attaches a descriptor set — is an
+# invalid document (§3.6), refused whole at load time.
+servers:
+  - name: orders
+    type: grpc
+    descriptorSet: ./shop.binpb

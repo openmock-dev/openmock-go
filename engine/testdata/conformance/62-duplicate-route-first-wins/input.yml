@@ -1,0 +1,29 @@
+openmock: 0.2.0
+info:
+  title: Duplicate method+path — first operation wins
+# Two operations declare the same method+path. An implementation MUST
+# consider them in document order and use the first (spec §5.2/§5.3).
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: first
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                via: first
+      - method: GET
+        path: /health
+        scenarios:
+          - name: second
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                via: second

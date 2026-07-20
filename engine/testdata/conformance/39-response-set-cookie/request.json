@@ -1,0 +1,5 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/login/ada"
+}

@@ -1,0 +1,16 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/orders",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "count": 42,
+    "ratio": 1.0,
+    "active": true,
+    "note": null,
+    "meta": { "source": "web" },
+    "tags": ["a", "b"]
+  }
+}

@@ -1,0 +1,30 @@
+openmock: 0.2.0
+info:
+  title: GraphQL declared errors and partial response
+# GraphQL signals failure in-band: a response carries data, errors, or both.
+# Here data holds what resolved (a null order) and errors explains what did
+# not — a partial response.
+servers:
+  - name: main
+    type: graphql
+    operations:
+      - operationType: query
+        operationName: GetOrder
+        scenarios:
+          - name: not-found
+            when:
+              variables:
+                orderId: "0"
+            response:
+              data:
+                order: null
+              errors:
+                - message: order not found
+                  path: [order]
+                  extensions:
+                    code: NOT_FOUND
+          - name: found
+            response:
+              data:
+                order:
+                  id: "{{request.variables.orderId}}"

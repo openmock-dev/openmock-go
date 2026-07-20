@@ -1,0 +1,8 @@
+{
+  "status": 404,
+  "body": {
+    "openmock": "unrouted",
+    "message": "No operation matched the request.",
+    "path": "/ws/payments"
+  }
+}

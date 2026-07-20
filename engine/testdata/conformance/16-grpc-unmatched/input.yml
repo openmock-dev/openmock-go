@@ -1,0 +1,20 @@
+openmock: 0.2.0
+info:
+  title: gRPC unmatched request (no default scenario)
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: CancelOrder
+        type: unary
+        scenarios:
+          # Only cancellable orders are mapped; there is no default scenario.
+          - name: cancellable
+            when:
+              message:
+                state: PENDING
+            response:
+              status: OK
+              message:
+                cancelled: "true"

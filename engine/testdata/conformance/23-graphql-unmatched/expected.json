@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "message": "No scenario matched and no default scenario is defined.",
+      "extensions": {
+        "openmock": "unmatched",
+        "operationType": "mutation",
+        "operationName": "CancelOrder"
+      }
+    }
+  ]
+}

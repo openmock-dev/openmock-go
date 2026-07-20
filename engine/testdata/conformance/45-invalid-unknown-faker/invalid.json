@@ -1,0 +1,3 @@
+{
+  "reason": "faker.openmock.unknown names a method in the reserved openmock category, so it is unknown on every conformant engine: an unknown faker makes the document invalid (spec §9.3) and MUST be detected at load time, not at render time (spec §3.6). This document passes the JSON Schema — the violation is only visible to spec-level validation."
+}

@@ -1,0 +1,22 @@
+openmock: 0.2.0
+info:
+  title: Faker reference values (conformance mode)
+servers:
+  - name: main
+    type: http
+    operations:
+      # Pins the three MUST-support faker methods that case 08 does not
+      # exercise. In conformance mode each placeholder MUST produce exactly
+      # its reference value (spec §9.3, corpus README).
+      - method: GET
+        path: /profile
+        scenarios:
+          - name: generated
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                email: "{{faker.internet.email}}"
+                score: "{{faker.number.int}}"
+                seenAt: "{{faker.date.recent}}"

@@ -1,0 +1,3 @@
+{
+  "reason": "The pattern \"(\" is malformed (unbalanced group): a pattern that is not valid RE2 makes the document invalid (spec §6.1) and must be refused at load time (spec §3.6). This document passes the JSON Schema — pattern validity is spec-level."
+}

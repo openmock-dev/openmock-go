@@ -1,0 +1,23 @@
+openmock: 0.2.0
+info:
+  title: GraphQL top-level response extensions
+servers:
+  - name: main
+    type: graphql
+    operations:
+      - operationType: query
+        operationName: GetOrder
+        scenarios:
+          # A GraphQL response MAY carry the spec-legal top-level `extensions`
+          # map alongside `data` (spec §7.4) — distinct from a per-error
+          # `extensions`. It is templatable like the rest of the response.
+          - name: found
+            response:
+              data:
+                order:
+                  id: "{{request.variables.orderId}}"
+                  state: SHIPPED
+              extensions:
+                tracing:
+                  version: "1"
+                requestId: "{{request.variables.orderId}}"

@@ -1,0 +1,11 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/users",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "role": "user"
+  }
+}

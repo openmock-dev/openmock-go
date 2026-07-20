@@ -1,0 +1,5 @@
+{
+  "status": "OK",
+  "metadata": { "x-mock": "true" },
+  "message": { "id": "42", "state": "SHIPPED" }
+}

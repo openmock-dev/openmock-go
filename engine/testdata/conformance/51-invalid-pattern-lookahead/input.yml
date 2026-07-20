@@ -1,0 +1,29 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: non-RE2 pattern (lookahead)"
+# "(?=ord)o.*" is a perfectly good PCRE/JavaScript pattern — but lookaround
+# is not RE2. Patterns are RE2 only (spec §6.1): an engine whose regex
+# library happily accepts more MUST still reject this document at load
+# time. This is the portability pin: without it, the same document would
+# load on a PCRE-based engine and be refused on an RE2-based one.
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /orders
+        scenarios:
+          - name: lookahead
+            when:
+              headers:
+                X-Id:
+                  pattern: "(?=ord)o.*"
+            response:
+              status: 200
+              body:
+                view: lookahead
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

@@ -1,0 +1,13 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/echo",
+  "headers": {
+    "user-agent": "curl/8.4.0"
+  },
+  "body": {
+    "user": {
+      "name": "Ada"
+    }
+  }
+}

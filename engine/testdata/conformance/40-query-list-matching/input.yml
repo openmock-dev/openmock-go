@@ -1,0 +1,72 @@
+openmock: 0.2.0
+info:
+  title: Exact list matching of repeated query parameters
+servers:
+  - name: main
+    type: http
+    operations:
+      # The shape a gRPC-JSON transcoder produces for a repeated proto field:
+      # ?ids=1&ids=2. A LIST facet value matches the full occurrence sequence
+      # exactly — same values, same order, same count (spec §4.6).
+      - method: GET
+        path: /orders
+        scenarios:
+          # An engine that joins repeated values into one string would see the
+          # one-element sequence ["1, 2"] and match here — this MUST NOT match.
+          - name: joined
+            when:
+              query:
+                ids: ["1, 2"]
+            response:
+              status: 200
+              body:
+                view: joined
+
+          # A prefix or subset is not the sequence — this MUST NOT match.
+          - name: too-short
+            when:
+              query:
+                ids: ["1"]
+            response:
+              status: 200
+              body:
+                view: too-short
+
+          # Order matters — this MUST NOT match.
+          - name: wrong-order
+            when:
+              query:
+                ids: ["2", "1"]
+            response:
+              status: 200
+              body:
+                view: wrong-order
+
+          # More occurrences than the request sent — this MUST NOT match.
+          - name: too-long
+            when:
+              query:
+                ids: ["1", "2", "3"]
+            response:
+              status: 200
+              body:
+                view: too-long
+
+          - name: exact
+            when:
+              query:
+                ids: ["1", "2"]
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: exact
+                # A repeated parameter has no string form -> empty string.
+                rendered: "{{request.query.ids}}"
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

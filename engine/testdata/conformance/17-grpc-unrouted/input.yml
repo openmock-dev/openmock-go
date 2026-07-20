@@ -1,0 +1,16 @@
+openmock: 0.2.0
+info:
+  title: gRPC unrouted request (unknown service/rpc)
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: found
+            response:
+              status: OK
+              message:
+                id: "1"

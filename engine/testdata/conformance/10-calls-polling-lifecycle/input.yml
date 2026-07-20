@@ -1,0 +1,55 @@
+openmock: 0.2.0
+info:
+  title: Polling lifecycle with the calls facet
+# A file-analysis flow: a hash 404s until "uploaded", polls as pending while
+# "analyzing", then reports done forever (default scenario catches the tail).
+# Counters are keyed per concrete path, so each {hash} advances independently,
+# and calls to the upload operation never advance the GET counters.
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /v1/file/upload
+        scenarios:
+          - name: accepted
+            response:
+              status: 202
+              headers:
+                Content-Type: application/json
+              body:
+                status: queued
+
+      - method: GET
+        path: /v1/file/{hash}
+        scenarios:
+          - name: not-uploaded-yet
+            when:
+              calls: 1
+            response:
+              status: 404
+              headers:
+                Content-Type: application/json
+              body:
+                error: not_found
+          - name: analyzing
+            when:
+              calls:
+                min: 2
+                max: 3
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                hash: "{{params.hash}}"
+                status: pending
+          - name: done
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                hash: "{{params.hash}}"
+                status: done
+                verdict: clean

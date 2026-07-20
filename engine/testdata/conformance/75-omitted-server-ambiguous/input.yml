@@ -1,0 +1,29 @@
+openmock: 0.2.0
+info:
+  title: Omitted server field with two candidates is unrouted
+# An absent `server` field is a convenience, never a tiebreaker (spec §4):
+# with two HTTP servers declared, a request that names neither is unrouted
+# (spec §8 step 1, §10.2) — even though both servers could answer it.
+servers:
+  - name: users-api
+    type: http
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: ok
+            response:
+              status: 200
+              body:
+                service: users
+  - name: billing-api
+    type: http
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: ok
+            response:
+              status: 200
+              body:
+                service: billing

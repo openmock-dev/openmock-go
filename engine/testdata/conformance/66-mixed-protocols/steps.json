@@ -1,0 +1,18 @@
+[
+  {
+    "request": { "server": "rest", "method": "GET", "path": "/status" },
+    "expected": { "status": 200, "headers": { "Content-Type": "application/json" }, "body": { "proto": "http" } }
+  },
+  {
+    "request": { "protocol": "grpc", "server": "orders", "service": "mix.v1.Service", "rpc": "Call", "message": {} },
+    "expected": { "status": "OK", "message": { "proto": "grpc" } }
+  },
+  {
+    "request": { "protocol": "graphql", "server": "gateway", "operationType": "query", "operationName": "Status" },
+    "expected": { "data": { "proto": "graphql" } }
+  },
+  {
+    "request": { "protocol": "websocket", "server": "feed", "path": "/ws/status", "message": { "type": "ping" } },
+    "expected": { "messages": [ { "proto": "websocket" } ] }
+  }
+]

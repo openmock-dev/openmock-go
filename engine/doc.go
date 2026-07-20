@@ -7,7 +7,18 @@
 // host" role in openmock-dev/openmock's docs/serving.md) as well as driven
 // by this module's own server and cmd/openmock packages.
 //
-// Not yet implemented. This package is currently a scaffold placeholder; the
-// parse, match, and render stages will be built out and validated against
-// the conformance corpus in openmock-dev/openmock's /conformance directory.
+// Use Parse to load and validate a document (spec §3, §3.6) and New to
+// create an Engine that resolves normalized Requests against it (spec §8).
+// Parse refuses any document spec §3.6 requires an implementation to
+// refuse; Resolve maintains the per-operation call counters the calls facet
+// reads (spec §6.3) and renders synthetic unrouted/unmatched responses per
+// spec §10.
+//
+// This package passes every case in openmock-dev/openmock's conformance
+// corpus (vendored under engine/testdata/conformance; see
+// conformance_test.go) covering HTTP, gRPC, GraphQL, and WebSocket mocks:
+// routing, first-match-wins scenario selection, all v0.2 matchers
+// (equality, exists, RE2 pattern), the calls facet, templating (including
+// whole-value typed injection and literal escaping), conformance-mode
+// faker, and document validation.
 package engine

@@ -1,0 +1,14 @@
+[
+  {
+    "request": { "server": "users-api", "method": "GET", "path": "/health" },
+    "expected": { "status": 200, "headers": { "Content-Type": "application/json" }, "body": { "service": "users", "status": "up" } }
+  },
+  {
+    "request": { "server": "billing-api", "method": "GET", "path": "/health" },
+    "expected": { "status": 200, "headers": { "Content-Type": "application/json" }, "body": { "service": "billing", "status": "up" } }
+  },
+  {
+    "request": { "server": "users-api", "method": "GET", "path": "/health" },
+    "expected": { "status": 200, "headers": { "Content-Type": "application/json" }, "body": { "service": "users", "status": "up" } }
+  }
+]

@@ -1,0 +1,48 @@
+openmock: 0.2.0
+info:
+  title: when precedence (first-match-wins)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /users/{id}
+        scenarios:
+          # Most specific: both a verbose query and an admin role.
+          - name: verbose-admin
+            when:
+              query:
+                verbose: ["true"]
+              headers:
+                X-Role: admin
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "{{params.id}}"
+                view: verbose-admin
+
+          # Less specific: admin role only. The request below also matches this,
+          # but verbose-admin appears first and wins.
+          - name: admin
+            when:
+              headers:
+                X-Role: admin
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "{{params.id}}"
+                view: admin
+
+          # Default fallback.
+          - name: default
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "{{params.id}}"
+                view: default

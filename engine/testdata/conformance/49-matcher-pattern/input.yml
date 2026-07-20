@@ -1,0 +1,47 @@
+openmock: 0.2.0
+info:
+  title: pattern matchers (RE2, entire-value anchoring)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /orders
+        scenarios:
+          # Patterns match the ENTIRE canonical string form (spec §6.1).
+          # "[0-9]+" matches "ord-123" only under unanchored SEARCH semantics —
+          # an engine doing that would match here. This MUST NOT match.
+          - name: unanchored
+            when:
+              body:
+                orderId:
+                  pattern: "[0-9]+"
+            response:
+              status: 200
+              body:
+                view: unanchored
+
+          # Full-value RE2 patterns: inline (?i) for case-insensitivity, and a
+          # number target (qty: 2) matched through its canonical string form.
+          - name: matched
+            when:
+              body:
+                orderId:
+                  pattern: "ord-[0-9]+"
+                state:
+                  pattern: "(?i)shipped"
+                qty:
+                  pattern: "[0-9]"
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: matched
+                orderId: "{{request.body.orderId}}"
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

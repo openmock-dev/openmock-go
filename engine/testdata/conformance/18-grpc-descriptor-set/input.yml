@@ -1,0 +1,21 @@
+openmock: 0.2.0
+
+# The document attaches a protobuf descriptor set through the standard
+# grpc.descriptorSet field (spec §3.4). Engines that consume descriptors and
+# engines that ignore them MUST produce the same response for the normalized
+# request — the field never changes what a document means.
+servers:
+  - name: main
+    type: grpc
+    descriptorSet: ./shop.binpb
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: found
+            response:
+              status: OK
+              message:
+                id: "{{request.message.orderId}}"
+                state: SHIPPED

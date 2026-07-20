@@ -1,0 +1,15 @@
+openmock: 0.2.0
+info:
+  title: WebSocket message with params and message templating
+servers:
+  - name: main
+    type: websocket
+    operations:
+      - path: /ws/orders/{id}
+        scenarios:
+          - name: subscribed
+            response:
+              messages:
+                - type: ack
+                  orderId: "{{params.id}}"
+                  requestId: "{{request.message.requestId}}"

@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "email": "ada.lovelace@example.com",
+    "score": "42",
+    "seenAt": "2026-01-01T12:00:00.000Z"
+  }
+}

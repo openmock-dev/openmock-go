@@ -1,0 +1,9 @@
+{
+  "status": 501,
+  "body": {
+    "openmock": "unmatched",
+    "message": "No scenario matched and no default scenario is defined.",
+    "method": "POST",
+    "path": "/users"
+  }
+}

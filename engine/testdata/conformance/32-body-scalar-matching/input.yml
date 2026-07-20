@@ -1,0 +1,74 @@
+openmock: 0.2.0
+info:
+  title: Scalar facet comparison (canonical string forms)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /orders
+        scenarios:
+          # null has no canonical string form: a null target behaves exactly like
+          # an absent one (spec §4.5), so this scenario MUST NOT match.
+          - name: null-is-absent
+            when:
+              body:
+                note: "null"
+            response:
+              status: 200
+              body:
+                view: null-is-absent
+
+          # Objects have no canonical string form, so this MUST NOT match — not
+          # even for an engine that would JSON-serialize the target.
+          - name: object-never-matches
+            when:
+              body:
+                meta: '{"source":"web"}'
+            response:
+              status: 200
+              body:
+                view: object-never-matches
+
+          # Arrays have no canonical string form either: neither a JSON form nor
+          # a joined form may match.
+          - name: array-never-matches-json
+            when:
+              body:
+                tags: '["a","b"]'
+            response:
+              status: 200
+              body:
+                view: array-never-matches-json
+
+          - name: array-never-matches-joined
+            when:
+              body:
+                tags: a,b
+            response:
+              status: 200
+              body:
+                view: array-never-matches-joined
+
+          # Numbers and booleans compare by canonical string form:
+          # 42 -> "42", 1.0 -> "1" (same double), true -> "true".
+          - name: scalar-forms
+            when:
+              body:
+                count: "42"
+                ratio: "1"
+                active: "true"
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                # Canonical string forms in MIXED text stay strings (spec §9.2):
+                # 42 -> "42", 1.0 -> "1", true -> "true", null -> "".
+                summary: "count={{request.body.count}} ratio={{request.body.ratio}} active={{request.body.active}} note={{request.body.note}}"
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

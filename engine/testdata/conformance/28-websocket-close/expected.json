@@ -1,0 +1,6 @@
+{
+  "messages": [
+    { "type": "goodbye" }
+  ],
+  "close": { "code": 1000, "reason": "client requested close" }
+}

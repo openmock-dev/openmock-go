@@ -1,0 +1,21 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: unknown faker method"
+# This document passes the JSON Schema — schema validity is a floor, not
+# the whole rule (spec §3.6). The openmock faker category is reserved, so
+# faker.openmock.unknown is unknown on every conformant engine, which
+# makes the document invalid (spec §9.3). Detection is a load-time duty:
+# an engine that only discovers the unknown faker while rendering a
+# response never refuses the load, and fails this case.
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /token
+        scenarios:
+          - name: generated
+            response:
+              status: 200
+              body:
+                token: "{{faker.openmock.unknown}}"

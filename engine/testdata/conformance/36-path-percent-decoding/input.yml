@@ -1,0 +1,33 @@
+openmock: 0.2.0
+info:
+  title: Percent-decoding happens per segment, after splitting
+servers:
+  - name: main
+    type: http
+    operations:
+      # An engine that percent-decodes BEFORE splitting turns /files/a%2Fb+c.txt
+      # into the three-segment path /files/a/b+c.txt and routes it here (first
+      # match). Splitting precedes decoding (spec §5.2), so the request stays a
+      # two-segment path and this MUST NOT route.
+      - method: GET
+        path: /files/a/{rest}
+        scenarios:
+          - name: decoded-too-early
+            response:
+              status: 200
+              body:
+                view: decoded-too-early
+
+      # {name} captures the percent-decoded segment: %2F becomes "/" inside the
+      # captured value (never a separator), and "+" stays literal — it is a
+      # space only in query strings, never in paths.
+      - method: GET
+        path: /files/{name}
+        scenarios:
+          - name: decoded-capture
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                name: "{{params.name}}"

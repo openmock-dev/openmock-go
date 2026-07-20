@@ -1,0 +1,22 @@
+openmock: 0.2.0
+info:
+  title: Templating substitution (request body and headers)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /echo
+        scenarios:
+          - name: echo
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                # Dotted path into the request body.
+                name: "{{request.body.user.name}}"
+                # Case-insensitive request header lookup.
+                agent: "{{request.headers.User-Agent}}"
+                # Unresolved placeholder -> empty string.
+                missing: "{{request.body.user.nickname}}"
