@@ -1,0 +1,61 @@
+openmock: 0.2.0
+
+# Value matchers and list-valued response headers.
+#
+# - A `when` facet value may be a matcher object instead of a literal:
+#     {exists: true|false}  - the field is present / absent
+#     {pattern: "RE2"}      - the field's canonical string matches the whole
+#                             RE2 pattern (implicitly anchored)
+# - A response header whose value is a YAML list emits one field line per
+#   item, in order - the standard way to send several Set-Cookie headers.
+
+info:
+  title: Matchers and cookies
+  version: 1.0.0
+  description: exists/pattern when-matchers and multi-line Set-Cookie.
+
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /login
+        scenarios:
+          # An API key shaped like key-<digits> logs you in and sets two
+          # cookies (each Set-Cookie is a separate field line).
+          - name: valid-key
+            when:
+              headers:
+                X-Api-Key:
+                  pattern: "key-[0-9]+"
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+                Set-Cookie:
+                  - "session={{faker.string.uuid}}; Path=/; HttpOnly"
+                  - "theme=dark; Path=/"
+              body:
+                loggedIn: true
+
+          # No API key header at all -> 401.
+          - name: missing-key
+            when:
+              headers:
+                X-Api-Key:
+                  exists: false
+            response:
+              status: 401
+              headers:
+                Content-Type: application/json
+              body:
+                error: api key required
+
+          # Present but malformed key -> 403.
+          - name: bad-key
+            response:
+              status: 403
+              headers:
+                Content-Type: application/json
+              body:
+                error: invalid api key

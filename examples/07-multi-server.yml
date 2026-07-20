@@ -1,0 +1,75 @@
+openmock: 0.2.0
+
+# One document, two HTTP servers. Each request is routed to a server by the
+# port it arrives on, so both may declare overlapping paths (here, /health).
+#
+# With two servers of the same type, the sole-server default (3000) does not
+# apply - give each a port. This document carries `port` hints; you can
+# override them at startup:
+#
+#   openmock serve examples/07-multi-server.yml \
+#     --port users=3000 --port orders=3001
+#   OPENMOCK_PORTS="users=3000,orders=3001" openmock serve examples/07-multi-server.yml
+#
+# The admin API's GET /servers reports the resolved port for each.
+
+info:
+  title: Multi-server topology
+  version: 1.0.0
+  description: Two HTTP servers in one document, addressed by port.
+
+servers:
+  - name: users
+    type: http
+    port: 3000
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: ok
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                service: users
+                status: ok
+      - method: GET
+        path: /users/{id}
+        scenarios:
+          - name: found
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "{{params.id}}"
+                name: "{{faker.person.fullName}}"
+
+  - name: orders
+    type: http
+    port: 3001
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: ok
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                service: orders
+                status: ok
+      - method: GET
+        path: /orders/{id}
+        scenarios:
+          - name: found
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "{{params.id}}"
+                total: 4200
+                currency: USD

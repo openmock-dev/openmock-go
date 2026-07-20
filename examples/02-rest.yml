@@ -1,0 +1,81 @@
+openmock: 0.2.0
+
+# Multiple scenarios evaluated first-match-wins. The most specific `when`
+# scenarios come first; the conditionless default comes last.
+
+info:
+  title: Users API mock
+  version: 1.0.0
+  description: Demonstrates when conditions and a default fallback.
+
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /users/{id}
+        scenarios:
+          # Matches only when the request carries an admin role header.
+          - name: admin-user
+            summary: Admin view — richer payload for callers with the admin role.
+            when:
+              headers:
+                X-Role: admin
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "{{params.id}}"
+                name: Ada Lovelace
+                role: admin
+
+          # Matches a specific user id, regardless of headers.
+          - name: known-user-1
+            when:
+              params:
+                id: "1"
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "1"
+                name: Grace Hopper
+                role: user
+
+          # Default fallback — always matches, so it must be last.
+          - name: default-user
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                id: "{{params.id}}"
+                name: Anonymous
+                role: user
+
+      - method: POST
+        path: /users
+        scenarios:
+          # Reject when the body is missing a required field.
+          - name: missing-name
+            when:
+              body:
+                name: ""
+            response:
+              status: 422
+              headers:
+                Content-Type: application/json
+              body:
+                error: name is required
+
+          - name: created
+            response:
+              status: 201
+              headers:
+                Content-Type: application/json
+              body:
+                id: "100"
+                name: "{{request.body.name}}"
+                role: user

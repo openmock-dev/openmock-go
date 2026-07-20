@@ -2,13 +2,16 @@
 
 Go reference implementation of [OpenMock](https://github.com/openmock-dev/openmock).
 
-**Status: engine implemented, server and CLI not yet started.** The `engine`
-package is a working parse → match → render core that passes every case in
+**Status: engine + HTTP server implemented.** The `engine` package is a
+working parse → match → render core that passes every case in
 [openmock-dev/openmock](https://github.com/openmock-dev/openmock)'s
 conformance corpus, across all four v0.2 protocols (HTTP, gRPC, GraphQL,
-WebSocket). It has no server and no CLI yet — `server/` and `cmd/openmock/`
-are still placeholders, so there is no way to actually serve mocks with this
-repository today.
+WebSocket). The `server` package serves a document over **HTTP** — the
+protocol adapter plus the standalone-server profile of `docs/serving.md`
+(port resolution and the admin API) — and `openmock serve` runs it from the
+command line. gRPC, GraphQL, and WebSocket serving are not built yet; a
+document's non-HTTP servers are reported as unbound until their adapters
+land.
 
 OpenMock is first a **specification**; this repository is its Go reference
 tooling. See [openmock-dev/openmock](https://github.com/openmock-dev/openmock)
@@ -35,27 +38,61 @@ draws between the resolution engine and the roles that serve it:
 engine/       pure parse -> match -> render core; no I/O, no server
               assumption. Importable standalone by an embedding host.
               Implemented: HTTP, gRPC, GraphQL, and WebSocket, conformant.
-server/       protocol adapters (HTTP today; gRPC, GraphQL, WebSocket to
-              follow) over the engine, plus the admin/discovery API from
-              docs/serving.md, for the standalone-server role. Placeholder.
-cmd/openmock/ the CLI: validate, serve, test subcommands. Placeholder.
+server/       protocol adapters + serving (HTTP implemented; gRPC, GraphQL,
+              WebSocket to follow) over the engine, plus the admin/discovery
+              API from docs/serving.md, for the standalone-server role.
+cmd/openmock/ the CLI: `serve` implemented; validate, test to follow.
 ```
 
-## Status
+## Serving over HTTP
 
-- **`engine/`** — implemented. `engine.Parse` loads and validates a document
-  (spec §3, refusing anything §3.6 requires refusing); `engine.New(doc)`
-  returns an `*Engine` whose `Resolve(*Request)` runs the matching algorithm
-  of spec §8 — routing, the call counter, first-match-wins scenario
-  selection, and templated rendering (including faker, in the corpus's
-  deterministic conformance mode) — for HTTP, gRPC, GraphQL, and WebSocket
-  alike. `go test ./engine/...` runs it against every case in
-  `engine/testdata/conformance`.
-- **`server/`**, **`cmd/openmock/`** — still placeholders. See each
-  package's doc comment (`server/doc.go`) and `cmd/openmock/main.go` for
-  what's planned.
+```console
+$ openmock serve mocks.yml
+serving "main" on http://127.0.0.1:3000
+admin API on http://127.0.0.1:4400
+```
 
-## Using the engine
+- **Ports** resolve per `docs/serving.md` §2: `--port name=n` (repeatable) or
+  `OPENMOCK_PORTS="a=3000,b=3001"`, then the document's `port` hint, then the
+  stable default `3000` for a document's sole HTTP server, else an
+  OS-ephemeral port. A configured/hinted port that can't bind fails loudly.
+- **Admin API** on `4400` (`--admin-port`, `0` for ephemeral), loopback by
+  default: `GET /servers` (the resolved topology), `GET /health`,
+  `POST /reset` (clear call counters).
+- **`--bind`** sets the interface (default `127.0.0.1`; `0.0.0.0` to expose).
+
+### Try it
+
+```console
+$ make build
+$ ./bin/openmock serve examples/01-minimal.yml &
+$ curl -s localhost:3000/health          # {"status":"ok"}
+$ curl -s localhost:4400/servers         # the resolved topology
+```
+
+Or run the scripted, self-contained walkthrough (starts the server, curls a
+polling lifecycle and the admin API, shuts down):
+
+```console
+$ make demo
+```
+
+The [`examples/`](./examples) directory has seven runnable documents —
+path params, templating and faker, delays and errors, the `calls` polling
+lifecycle, `exists`/`pattern` matchers with multi-line `Set-Cookie`, and a
+two-server topology — each with copy-paste curl commands in
+[`examples/README.md`](./examples/README.md).
+
+## Development
+
+```console
+$ make            # list targets
+$ make build      # ./bin/openmock
+$ make check      # gofmt check + go vet + go test -race (what CI runs)
+$ make run EXAMPLE=examples/05-polling.yml   # serve an example in the foreground
+```
+
+## Using the engine directly
 
 ```go
 doc, err := engine.Parse(yamlBytes) // spec §3; refuses invalid documents
@@ -73,10 +110,9 @@ resp := eng.Resolve(&engine.Request{
 `Resolve` returns a `map[string]any` shaped like the protocol's normalized
 response in openmock-dev/openmock's
 [`conformance/README.md`](https://github.com/openmock-dev/openmock/blob/main/conformance/README.md#expectedjson-shape)
-— e.g. `{"status": 200.0, "headers": {...}, "body": {...}}` for HTTP. A
-future `server` package will map that onto real HTTP/gRPC/GraphQL/WebSocket
-traffic; today, calling `Resolve` directly is the only way to drive the
-engine.
+— e.g. `{"status": 200.0, "headers": {...}, "body": {...}}` for HTTP. The
+`server` package maps that onto real HTTP traffic; embedding hosts can drive
+`Resolve` directly.
 
 ## License
 
