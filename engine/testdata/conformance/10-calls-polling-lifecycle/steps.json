@@ -1,0 +1,50 @@
+[
+  {
+    "request": { "server": "main", "method": "GET", "path": "/v1/file/abc" },
+    "expected": {
+      "status": 404,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "error": "not_found" }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "POST", "path": "/v1/file/upload", "body": { "content": "..." } },
+    "expected": {
+      "status": 202,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "status": "queued" }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "GET", "path": "/v1/file/abc" },
+    "expected": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "hash": "abc", "status": "pending" }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "GET", "path": "/v1/file/def" },
+    "expected": {
+      "status": 404,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "error": "not_found" }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "GET", "path": "/v1/file/abc" },
+    "expected": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "hash": "abc", "status": "pending" }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "GET", "path": "/v1/file/abc" },
+    "expected": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "hash": "abc", "status": "done", "verdict": "clean" }
+    }
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "request": { "protocol": "grpc", "server": "main", "service": "poll.v1.Service", "rpc": "GetStatus", "message": {} },
+    "expected": { "status": "OK", "message": { "state": "PENDING" } }
+  },
+  {
+    "request": { "protocol": "grpc", "server": "main", "service": "poll.v1.Service", "rpc": "GetStatus", "message": {} },
+    "expected": { "status": "OK", "message": { "state": "DONE" } }
+  },
+  {
+    "request": { "protocol": "grpc", "server": "main", "service": "poll.v1.Service", "rpc": "GetStatus", "message": {} },
+    "expected": { "status": "OK", "message": { "state": "DONE" } }
+  }
+]

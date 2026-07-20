@@ -1,0 +1,3 @@
+{
+  "reason": "Two servers share the name \"api\". Server names must be unique across the servers list (spec §3.3), so the document is invalid (spec §3.6) and must be refused at load time. This document passes the JSON Schema — cross-item uniqueness is not schema-expressible; the violation is spec-level."
+}

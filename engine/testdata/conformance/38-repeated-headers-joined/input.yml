@@ -1,0 +1,59 @@
+openmock: 0.2.0
+info:
+  title: Repeated request headers join with a comma and space
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /tags
+        scenarios:
+          # Two X-Tag field lines (alpha, beta) normalize to the single value
+          # "alpha, beta" (spec §4.6). An engine keeping only the first field
+          # line would match here — this MUST NOT match.
+          - name: first-wins
+            when:
+              headers:
+                X-Tag: alpha
+            response:
+              status: 200
+              body:
+                view: first-wins
+
+          # An engine keeping only the last field line MUST NOT match either.
+          - name: last-wins
+            when:
+              headers:
+                X-Tag: beta
+            response:
+              status: 200
+              body:
+                view: last-wins
+
+          # An engine joining without the space MUST NOT match.
+          - name: joined-no-space
+            when:
+              headers:
+                X-Tag: alpha,beta
+            response:
+              status: 200
+              body:
+                view: joined-no-space
+
+          - name: joined
+            when:
+              headers:
+                X-Tag: alpha, beta
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: joined
+                tag: "{{request.headers.X-Tag}}"
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

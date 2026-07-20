@@ -1,0 +1,51 @@
+openmock: 0.2.0
+info:
+  title: A one-element list matches a single-occurrence query parameter
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /search
+        scenarios:
+          # Query facet values are always lists (spec §4.6): ?a=1 is the
+          # one-element occurrence sequence ["1"]. A different value MUST NOT
+          # match.
+          - name: wrong-value
+            when:
+              query:
+                a: ["2"]
+            response:
+              status: 200
+              body:
+                view: wrong-value
+
+          # Same value, wrong count — the sequence has one element, not two.
+          - name: wrong-count
+            when:
+              query:
+                a: ["1", "1"]
+            response:
+              status: 200
+              body:
+                view: wrong-count
+
+          # One occurrence, one element: this matches. The single-valued
+          # parameter renders normally in templates.
+          - name: single
+            when:
+              query:
+                a: ["1"]
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: single
+                a: "{{request.query.a}}"
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

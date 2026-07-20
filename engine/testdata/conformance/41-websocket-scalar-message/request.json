@@ -1,0 +1,6 @@
+{
+  "protocol": "websocket",
+  "server": "main",
+  "path": "/ws/echo",
+  "message": "ping"
+}

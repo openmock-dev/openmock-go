@@ -1,0 +1,18 @@
+openmock: 0.2.0
+info:
+  title: Path parameters
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /users/{userId}/posts/{postId}
+        scenarios:
+          - name: post
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                userId: "{{params.userId}}"
+                postId: "{{params.postId}}"

@@ -1,0 +1,42 @@
+[
+  {
+    "request": { "server": "main", "method": "GET", "path": "/token" },
+    "expected": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "token": "temp-token" }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "GET", "path": "/token" },
+    "expected": {
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": { "token": "temp-token" }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "GET", "path": "/token" },
+    "expected": {
+      "status": 501,
+      "body": {
+        "openmock": "unmatched",
+        "message": "No scenario matched and no default scenario is defined.",
+        "method": "GET",
+        "path": "/token"
+      }
+    }
+  },
+  {
+    "request": { "server": "main", "method": "GET", "path": "/token" },
+    "expected": {
+      "status": 501,
+      "body": {
+        "openmock": "unmatched",
+        "message": "No scenario matched and no default scenario is defined.",
+        "method": "GET",
+        "path": "/token"
+      }
+    }
+  }
+]

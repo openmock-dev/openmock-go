@@ -1,0 +1,28 @@
+// Source for shop.binpb, the descriptor set input.yml attaches via
+// grpc.descriptorSet. Regenerate with:
+//
+//   protoc --include_imports --descriptor_set_out=shop.binpb shop.proto
+
+syntax = "proto3";
+
+package shop.v1;
+
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (Order);
+}
+
+enum OrderState {
+  ORDER_STATE_UNSPECIFIED = 0;
+  CREATED = 1;
+  PAID = 2;
+  SHIPPED = 3;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message Order {
+  string id = 1;
+  OrderState state = 2;
+}

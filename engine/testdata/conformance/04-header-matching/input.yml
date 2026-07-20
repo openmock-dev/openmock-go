@@ -1,0 +1,28 @@
+openmock: 0.2.0
+info:
+  title: Header matching (case-insensitive keys)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /secure
+        scenarios:
+          - name: authorized
+            when:
+              headers:
+                X-Api-Key: secret
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                authorized: true
+
+          - name: unauthorized
+            response:
+              status: 401
+              headers:
+                Content-Type: application/json
+              body:
+                error: missing or invalid api key

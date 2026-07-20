@@ -1,0 +1,31 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: two servers sharing a name"
+# Server names are how requests address a server, so they MUST be unique
+# across the servers list (spec §3.3). Duplicate names make the document
+# invalid (§3.6). JSON Schema cannot compare values across array items, so
+# this document passes the schema — the violation is spec-level, enforced
+# at load time like an inverted calls range.
+servers:
+  - name: api
+    type: http
+    operations:
+      - method: GET
+        path: /status
+        scenarios:
+          - name: ok
+            response:
+              status: 200
+              body:
+                service: one
+  - name: api
+    type: http
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: ok
+            response:
+              status: 200
+              body:
+                service: two

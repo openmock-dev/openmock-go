@@ -1,0 +1,25 @@
+openmock: 0.2.0
+info:
+  title: gRPC initial metadata versus trailers
+servers:
+  - name: main
+    type: grpc
+    operations:
+      # metadata is the INITIAL set (headers), emitted before the response
+      # message; trailers is the TRAILING set, emitted with the final status
+      # (spec §7.3). Both are templatable.
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: found
+            response:
+              status: OK
+              metadata:
+                x-mock: "true"
+              trailers:
+                x-request-id: "{{request.metadata.x-request-id}}"
+                x-cache: miss
+              message:
+                id: "{{request.message.orderId}}"
+                state: SHIPPED

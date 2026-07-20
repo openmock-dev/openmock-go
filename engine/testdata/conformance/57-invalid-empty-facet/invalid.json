@@ -1,0 +1,3 @@
+{
+  "reason": "The headers facet is an empty map. A map-form facet must declare at least one key (spec §6.1); an empty facet map is an invalid document (spec §3.6), refused at load time. This violation is detectable via the JSON Schema (minProperties: 1)."
+}

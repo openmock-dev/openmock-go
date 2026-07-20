@@ -1,0 +1,23 @@
+openmock: 0.2.0
+info:
+  title: Calls exhausted without a default scenario
+# Only the first two calls are mapped and there is no default scenario.
+# The third call is unmatched (501). The counter never resets or wraps, so
+# every later call is 501 too — there is no repeat-last and no restart.
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /token
+        scenarios:
+          - name: limited
+            when:
+              calls:
+                max: 2
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                token: temp-token

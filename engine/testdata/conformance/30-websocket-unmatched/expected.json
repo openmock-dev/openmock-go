@@ -1,0 +1,9 @@
+{
+  "messages": [
+    {
+      "openmock": "unmatched",
+      "message": "No scenario matched and no default scenario is defined.",
+      "path": "/ws/orders"
+    }
+  ]
+}

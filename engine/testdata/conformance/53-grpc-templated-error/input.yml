@@ -1,0 +1,18 @@
+openmock: 0.2.0
+info:
+  title: gRPC error messages are templatable
+servers:
+  - name: main
+    type: grpc
+    operations:
+      # error carries the status message for non-OK statuses and may contain
+      # templating placeholders (spec §7.3/§9) — the same scope as every other
+      # response string. Per §7.3, a non-OK unary response carries no message.
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: not-found
+            response:
+              status: NOT_FOUND
+              error: "order {{request.message.orderId}} not found"

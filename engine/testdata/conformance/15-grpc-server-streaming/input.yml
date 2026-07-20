@@ -1,0 +1,23 @@
+openmock: 0.2.0
+info:
+  title: gRPC server-streaming response
+# The call type is declared on the operation; a server-streaming response
+# carries an ordered messages list, emitted first to last.
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: WatchOrder
+        type: server-streaming
+        scenarios:
+          - name: lifecycle
+            response:
+              status: OK
+              messages:
+                - event: CREATED
+                  orderId: "{{request.message.orderId}}"
+                - event: PAID
+                  orderId: "{{request.message.orderId}}"
+                - event: SHIPPED
+                  orderId: "{{request.message.orderId}}"

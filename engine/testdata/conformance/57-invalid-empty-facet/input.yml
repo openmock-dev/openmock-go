@@ -1,0 +1,25 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: empty facet map"
+# A map-form facet MUST declare at least one key (spec §6.1). An empty
+# facet map is not a vacuously-true constraint but an invalid document,
+# refused at load time (§3.6). This is schema-detectable (minProperties).
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /users
+        scenarios:
+          - name: any
+            when:
+              headers: {}
+            response:
+              status: 200
+              body:
+                view: any
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

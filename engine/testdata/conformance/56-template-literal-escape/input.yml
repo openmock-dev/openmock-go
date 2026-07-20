@@ -1,0 +1,23 @@
+openmock: 0.2.0
+info:
+  title: Quoted-literal escaping of the placeholder delimiters
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /tpl
+        scenarios:
+          - name: literals
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                # A quoted string literal renders verbatim (spec §9.5), the
+                # Helm/Go-template escape for the braces. Single-quoted YAML
+                # scalars keep the inner double quotes literal.
+                escaped: '{{ "{{" }}not-a-placeholder{{ "}}" }}'   # -> "{{not-a-placeholder}}"
+                greeting: '{{ "hello" }}'                          # -> "hello"
+                # A data placeholder still resolves alongside a literal.
+                mixed: 'raw {{ "{{" }}{{params.missing}}'          # -> "raw {{"

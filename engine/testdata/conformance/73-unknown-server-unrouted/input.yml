@@ -1,0 +1,19 @@
+openmock: 0.2.0
+info:
+  title: A request naming an undeclared server is unrouted
+# Routing selects the server the request names (spec §8 step 1). A request
+# naming a server the document does not declare matches no operation — it is
+# ordinary unrouted (spec §10.2), even though an operation with the same
+# method and path exists on another server.
+servers:
+  - name: users-api
+    type: http
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: ok
+            response:
+              status: 200
+              body:
+                status: up

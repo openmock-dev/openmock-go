@@ -1,0 +1,8 @@
+{
+  "protocol": "graphql",
+  "server": "main",
+  "operationType": "query",
+  "operationName": "GetOrder",
+  "headers": { "x-role": "admin" },
+  "variables": { "filter": { "priority": "high" } }
+}

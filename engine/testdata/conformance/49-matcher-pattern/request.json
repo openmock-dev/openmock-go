@@ -1,0 +1,13 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/orders",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "orderId": "ord-123",
+    "state": "SHIPPED",
+    "qty": 2
+  }
+}

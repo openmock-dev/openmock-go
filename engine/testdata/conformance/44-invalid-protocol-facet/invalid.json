@@ -1,0 +1,3 @@
+{
+  "reason": "The headers facet is not valid under a gRPC operation's when (spec §6.1); the document must be refused at load time (spec §3.6). This violation is also detectable via the JSON Schema."
+}

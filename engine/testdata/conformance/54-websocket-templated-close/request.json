@@ -1,0 +1,6 @@
+{
+  "protocol": "websocket",
+  "server": "main",
+  "path": "/ws/session",
+  "message": { "type": "logout", "user": "ada" }
+}

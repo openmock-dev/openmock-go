@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "count": 3,
+    "active": true,
+    "meta": { "src": "web" },
+    "tags": ["a", "b"],
+    "whole": {
+      "count": 3,
+      "active": true,
+      "meta": { "src": "web" },
+      "tags": ["a", "b"],
+      "name": "Ada"
+    },
+    "label": "id-3",
+    "missing": "",
+    "name": "Ada"
+  }
+}

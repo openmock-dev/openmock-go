@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "name": "Ada",
+    "agent": "curl/8.4.0",
+    "missing": ""
+  }
+}

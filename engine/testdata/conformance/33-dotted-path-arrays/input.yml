@@ -1,0 +1,65 @@
+openmock: 0.2.0
+info:
+  title: Dotted-path resolution (array indexing, literal dots, failed paths)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /carts
+        scenarios:
+          # "." is always a separator (spec §4.5): this path looks for a member
+          # "role" under a member "user", which does not exist. The literal key
+          # "user.role" in the request body is unaddressable in v0.1, so this
+          # scenario MUST NOT match.
+          - name: literal-dot-key
+            when:
+              body:
+                user.role: admin
+            response:
+              status: 200
+              body:
+                view: literal-dot-key
+
+          # Index 2 is past the end of the two-element array -> absent -> no match.
+          - name: index-out-of-range
+            when:
+              body:
+                items.2.id: c3
+            response:
+              status: 200
+              body:
+                view: index-out-of-range
+
+          # Only canonical integer segments index arrays: "01" has a leading zero,
+          # so it never selects element 1.
+          - name: non-canonical-index
+            when:
+              body:
+                items.01.id: b2
+            response:
+              status: 200
+              body:
+                view: non-canonical-index
+
+          # Digit segments index arrays 0-based; paths mix members and indices.
+          # items.0.qty targets the JSON number 2, matched via its string form.
+          - name: array-paths
+            when:
+              body:
+                items.0.qty: "2"
+                items.1.id: b2
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                firstId: "{{request.body.items.0.id}}"
+                # Traversal through a scalar fails -> absent -> empty string.
+                beyondScalar: "{{request.body.items.0.id.x}}"
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

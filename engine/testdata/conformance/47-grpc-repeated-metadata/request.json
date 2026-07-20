@@ -1,0 +1,10 @@
+{
+  "protocol": "grpc",
+  "server": "main",
+  "service": "shop.v1.OrderService",
+  "rpc": "GetOrder",
+  "metadata": {
+    "x-tag": ["alpha", "beta"]
+  },
+  "message": { "orderId": "42" }
+}

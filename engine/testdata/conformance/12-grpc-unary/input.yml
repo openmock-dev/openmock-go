@@ -1,0 +1,19 @@
+openmock: 0.2.0
+info:
+  title: gRPC unary call with message templating
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: found
+            response:
+              status: OK
+              metadata:
+                x-mock: "true"
+              message:
+                id: "{{request.message.orderId}}"
+                state: SHIPPED

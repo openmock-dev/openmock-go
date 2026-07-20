@@ -1,0 +1,24 @@
+openmock: 0.2.0
+info:
+  title: GraphQL mutation routing with nested variables templating
+servers:
+  - name: main
+    type: graphql
+    operations:
+      - operationType: query
+        operationName: GetOrder
+        scenarios:
+          - name: found
+            response:
+              data:
+                order:
+                  id: "1"
+      - operationType: mutation
+        operationName: CreateOrder
+        scenarios:
+          - name: created
+            response:
+              data:
+                createOrder:
+                  id: order-1001
+                  lines: "{{request.variables.input.lines}}"

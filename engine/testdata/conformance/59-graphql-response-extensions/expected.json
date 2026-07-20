@@ -1,0 +1,14 @@
+{
+  "data": {
+    "order": {
+      "id": "42",
+      "state": "SHIPPED"
+    }
+  },
+  "extensions": {
+    "tracing": {
+      "version": "1"
+    },
+    "requestId": "42"
+  }
+}

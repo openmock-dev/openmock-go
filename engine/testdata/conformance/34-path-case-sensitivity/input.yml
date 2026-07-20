@@ -1,0 +1,29 @@
+openmock: 0.2.0
+info:
+  title: Path comparison is case-sensitive
+servers:
+  - name: main
+    type: http
+    operations:
+      # A case-insensitive router would route /FILES/9 here (first match).
+      # Path comparison is case-sensitive (spec §5.2), so this MUST NOT route.
+      - method: GET
+        path: /files/{id}
+        scenarios:
+          - name: lower
+            response:
+              status: 200
+              body:
+                view: lower
+
+      - method: GET
+        path: /FILES/{id}
+        scenarios:
+          - name: upper
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: upper
+                id: "{{params.id}}"

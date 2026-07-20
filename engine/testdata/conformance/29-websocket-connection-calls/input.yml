@@ -1,0 +1,30 @@
+openmock: 0.2.0
+info:
+  title: WebSocket per-connection call counters and an empty reply
+# For WebSocket operations the call counter is keyed per (operation,
+# connection): every connection's exchange starts from 1, and concurrent
+# connections never see each other's counts. The heartbeat scenario shows a
+# deliberate empty reply — and that ignored messages still advance the
+# counter (counting happens before scenario selection).
+servers:
+  - name: main
+    type: websocket
+    operations:
+      - path: /ws/feed
+        scenarios:
+          - name: welcome
+            when:
+              calls: 1
+            response:
+              messages:
+                - type: welcome
+          - name: heartbeat
+            when:
+              message:
+                type: ping
+            response:
+              messages: []
+          - name: data
+            response:
+              messages:
+                - type: data

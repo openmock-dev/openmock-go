@@ -1,0 +1,24 @@
+openmock: 0.2.0
+info:
+  title: WebSocket reply followed by a close
+# The reply is emitted in order — every entry of messages, then the close.
+servers:
+  - name: main
+    type: websocket
+    operations:
+      - path: /ws/session
+        scenarios:
+          - name: bye
+            when:
+              message:
+                type: bye
+            response:
+              messages:
+                - type: goodbye
+              close:
+                code: 1000
+                reason: client requested close
+          - name: echo
+            response:
+              messages:
+                - type: echo

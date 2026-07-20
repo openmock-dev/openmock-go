@@ -1,0 +1,29 @@
+openmock: 0.2.0
+info:
+  title: Whole-value placeholders inject native types
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /echo
+        scenarios:
+          - name: typed
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                # Whole-value placeholders in a native-payload position take the
+                # source's native JSON type (spec §9.4).
+                count: "{{request.body.count}}"     # number  -> 3
+                active: "{{request.body.active}}"    # boolean -> true
+                meta: "{{request.body.meta}}"        # object  -> injected
+                tags: "{{request.body.tags}}"        # array   -> injected
+                whole: "{{request.body}}"            # bare payload root -> object
+                # Mixed text renders a string (canonical string forms).
+                label: "id-{{request.body.count}}"   # -> "id-3"
+                # Absent whole-value placeholder -> empty string (§9.2 unchanged).
+                missing: "{{request.body.nope}}"     # -> ""
+                # A string source stays a string.
+                name: "{{request.body.name}}"        # -> "Ada"

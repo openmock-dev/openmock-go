@@ -1,0 +1,40 @@
+openmock: 0.2.0
+info:
+  title: gRPC metadata and message facet matching (first-match-wins)
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          # Most specific: admin metadata AND a specific nested message value.
+          # Metadata keys match case-insensitively; message keys are dotted paths.
+          - name: admin-priority
+            when:
+              metadata:
+                X-Role: admin
+              message:
+                order.priority: high
+            response:
+              status: OK
+              message:
+                view: admin-priority
+
+          # Less specific: admin metadata only. The request below also satisfies
+          # this, but admin-priority appears first and wins.
+          - name: admin
+            when:
+              metadata:
+                X-Role: admin
+            response:
+              status: OK
+              message:
+                view: admin
+
+          - name: default
+            response:
+              status: OK
+              message:
+                view: default

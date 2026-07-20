@@ -1,0 +1,8 @@
+{
+  "server": "main",
+  "method": "GET",
+  "path": "/x",
+  "headers": {
+    "X-Role": "admin"
+  }
+}

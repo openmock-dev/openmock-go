@@ -1,0 +1,8 @@
+{
+  "status": "OK",
+  "messages": [
+    { "event": "CREATED", "orderId": "7" },
+    { "event": "PAID", "orderId": "7" },
+    { "event": "SHIPPED", "orderId": "7" }
+  ]
+}

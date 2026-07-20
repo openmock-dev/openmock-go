@@ -1,0 +1,17 @@
+# The GraphQL type system input.yml attaches via graphql.schema. Plain SDL —
+# nothing to compile.
+
+type Query {
+  order(id: ID!): Order
+}
+
+enum OrderState {
+  CREATED
+  PAID
+  SHIPPED
+}
+
+type Order {
+  id: ID!
+  state: OrderState!
+}

@@ -1,0 +1,42 @@
+openmock: 0.2.0
+info:
+  title: Scalar WebSocket messages match the scalar message form
+servers:
+  - name: main
+    type: websocket
+    operations:
+      - path: /ws/echo
+        scenarios:
+          # A plain-text frame normalizes to the string scalar "ping" (spec
+          # §4.4). A dotted path never resolves inside a scalar payload, so the
+          # map form MUST NOT match it.
+          - name: map-form
+            when:
+              message:
+                text: ping
+            response:
+              messages:
+                - view: map-form
+
+          # The scalar form compares the whole payload — a different value MUST
+          # NOT match.
+          - name: wrong-value
+            when:
+              message: pong
+            response:
+              messages:
+                - view: wrong-value
+
+          # Scalar form matches the whole payload by canonical string form, and
+          # bare {{request.message}} renders it (spec §6.1/§9.1).
+          - name: ping
+            when:
+              message: ping
+            response:
+              messages:
+                - "pong: {{request.message}}"
+
+          - name: default
+            response:
+              messages:
+                - view: default

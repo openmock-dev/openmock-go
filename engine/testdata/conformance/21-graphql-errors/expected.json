@@ -1,0 +1,10 @@
+{
+  "data": { "order": null },
+  "errors": [
+    {
+      "message": "order not found",
+      "path": ["order"],
+      "extensions": { "code": "NOT_FOUND" }
+    }
+  ]
+}

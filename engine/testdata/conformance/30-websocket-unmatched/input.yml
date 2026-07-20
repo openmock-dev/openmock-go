@@ -1,0 +1,17 @@
+openmock: 0.2.0
+info:
+  title: WebSocket unmatched message (no default scenario)
+servers:
+  - name: main
+    type: websocket
+    operations:
+      - path: /ws/orders
+        scenarios:
+          # Only subscribe commands are mapped; there is no default scenario.
+          - name: subscribed
+            when:
+              message:
+                type: subscribe
+            response:
+              messages:
+                - type: ack

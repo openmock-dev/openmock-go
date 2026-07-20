@@ -1,0 +1,20 @@
+openmock: 0.2.0
+info:
+  title: delay on a non-HTTP (gRPC) response
+# delay is protocol-agnostic (spec §7.2); this pins it outside HTTP. The
+# harness asserts the declared delay value, not wall-clock timing.
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: found
+            response:
+              status: OK
+              delay: 250
+              message:
+                id: "1"
+                state: SHIPPED

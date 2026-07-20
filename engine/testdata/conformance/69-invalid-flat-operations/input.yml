@@ -1,0 +1,17 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: legacy flat operations list"
+# The 0.1 layout — a top-level operations list with per-operation protocol
+# keys — is not part of 0.2: operations live inside a named server in the
+# servers list (spec §3.3). This is the migration hazard, pinned: an engine
+# MUST refuse the document (§3.6), and SHOULD point the author at the
+# servers layout.
+operations:
+  - method: GET
+    path: /ping
+    scenarios:
+      - name: pong
+        response:
+          status: 200
+          body:
+            message: pong

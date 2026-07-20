@@ -1,0 +1,9 @@
+{
+  "status": "UNIMPLEMENTED",
+  "error": "No scenario matched and no default scenario is defined.",
+  "trailers": {
+    "openmock": "unmatched",
+    "openmock-service": "shop.v1.OrderService",
+    "openmock-rpc": "CancelOrder"
+  }
+}

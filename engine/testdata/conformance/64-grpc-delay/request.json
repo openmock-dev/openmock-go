@@ -1,0 +1,7 @@
+{
+  "protocol": "grpc",
+  "server": "main",
+  "service": "shop.v1.OrderService",
+  "rpc": "GetOrder",
+  "message": { "orderId": "1" }
+}

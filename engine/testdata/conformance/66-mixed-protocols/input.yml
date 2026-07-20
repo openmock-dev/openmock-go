@@ -1,0 +1,54 @@
+openmock: 0.2.0
+info:
+  title: A document mixing all four protocols
+# A document may declare servers of all four types side by side (spec §3.3).
+# Each request in steps.json names its server and resolves against that
+# server's operations, never another's.
+servers:
+  - name: rest
+    type: http
+    operations:
+      - method: GET
+        path: /status
+        scenarios:
+          - name: http
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                proto: http
+
+  - name: orders
+    type: grpc
+    operations:
+      - service: mix.v1.Service
+        rpc: Call
+        type: unary
+        scenarios:
+          - name: grpc
+            response:
+              status: OK
+              message:
+                proto: grpc
+
+  - name: gateway
+    type: graphql
+    operations:
+      - operationType: query
+        operationName: Status
+        scenarios:
+          - name: graphql
+            response:
+              data:
+                proto: graphql
+
+  - name: feed
+    type: websocket
+    operations:
+      - path: /ws/status
+        scenarios:
+          - name: websocket
+            response:
+              messages:
+                - proto: websocket

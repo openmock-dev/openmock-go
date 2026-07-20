@@ -1,0 +1,25 @@
+openmock: 0.2.0
+info:
+  title: gRPC declared error status
+# A non-OK unary response carries a status and error message, never a message
+# body.
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: not-found
+            when:
+              message:
+                orderId: "0"
+            response:
+              status: NOT_FOUND
+              error: order not found
+          - name: found
+            response:
+              status: OK
+              message:
+                id: "{{request.message.orderId}}"

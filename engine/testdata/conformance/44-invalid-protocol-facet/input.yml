@@ -1,0 +1,27 @@
+openmock: 0.2.0
+info:
+  title: "INVALID: headers facet under a gRPC operation"
+# The headers facet is not listed for the grpc protocol (spec §6.1), so this
+# document is invalid (§3.6). An implementation MUST refuse to load it —
+# not skip the operation, not serve the default scenario.
+servers:
+  - name: main
+    type: grpc
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: admin
+            when:
+              headers:
+                X-Role: admin
+            response:
+              status: OK
+              message:
+                view: admin
+          - name: default
+            response:
+              status: OK
+              message:
+                view: default

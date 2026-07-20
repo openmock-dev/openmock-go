@@ -1,0 +1,52 @@
+[
+  {
+    "request": {
+      "protocol": "websocket",
+      "server": "main",
+      "path": "/ws/feed",
+      "connection": "c1",
+      "message": { "type": "subscribe" }
+    },
+    "expected": { "messages": [{ "type": "welcome" }] }
+  },
+  {
+    "request": {
+      "protocol": "websocket",
+      "server": "main",
+      "path": "/ws/feed",
+      "connection": "c2",
+      "message": { "type": "subscribe" }
+    },
+    "expected": { "messages": [{ "type": "welcome" }] }
+  },
+  {
+    "request": {
+      "protocol": "websocket",
+      "server": "main",
+      "path": "/ws/feed",
+      "connection": "c1",
+      "message": { "type": "next" }
+    },
+    "expected": { "messages": [{ "type": "data" }] }
+  },
+  {
+    "request": {
+      "protocol": "websocket",
+      "server": "main",
+      "path": "/ws/feed",
+      "connection": "c1",
+      "message": { "type": "ping" }
+    },
+    "expected": { "messages": [] }
+  },
+  {
+    "request": {
+      "protocol": "websocket",
+      "server": "main",
+      "path": "/ws/feed",
+      "connection": "c2",
+      "message": { "type": "next" }
+    },
+    "expected": { "messages": [{ "type": "data" }] }
+  }
+]

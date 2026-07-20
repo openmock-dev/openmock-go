@@ -1,0 +1,20 @@
+openmock: 0.2.0
+info:
+  title: Omitted server field defaults to the sole server
+# A request MAY omit its `server` field (spec §4): when the document declares
+# exactly one server of the request's protocol, the request targets it. This
+# keeps the common single-server document free of addressing boilerplate.
+servers:
+  - name: users-api
+    type: http
+    operations:
+      - method: GET
+        path: /ping
+        scenarios:
+          - name: pong
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                message: pong

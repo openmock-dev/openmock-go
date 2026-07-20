@@ -1,0 +1,26 @@
+openmock: 0.2.0
+info:
+  title: Unknown specification extensions are ignored
+# x- keys appear at every level that permits them, and a non-normative
+# scenario summary. An engine that recognises none of the extensions must
+# serve this mock exactly as if they were absent, and summary never affects
+# matching.
+x-vendor-team: payments
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /health
+        x-vendor-monitor: true
+        scenarios:
+          - name: healthy
+            summary: Liveness probe — always returns ok.
+            x-vendor-note: unused by conformant engines
+            response:
+              status: 200
+              x-vendor-trace: abc123
+              headers:
+                Content-Type: application/json
+              body:
+                status: ok

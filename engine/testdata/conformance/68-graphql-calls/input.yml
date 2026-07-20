@@ -1,0 +1,25 @@
+openmock: 0.2.0
+info:
+  title: GraphQL calls facet (per-operation counter)
+# The calls facet works for GraphQL exactly as for HTTP: the counter is
+# keyed by operationType + operationName, so it is effectively per-operation
+# (spec §6.3).
+servers:
+  - name: main
+    type: graphql
+    operations:
+      - operationType: query
+        operationName: PollReport
+        scenarios:
+          - name: generating
+            when:
+              calls: 1
+            response:
+              data:
+                report:
+                  state: GENERATING
+          - name: ready
+            response:
+              data:
+                report:
+                  state: READY

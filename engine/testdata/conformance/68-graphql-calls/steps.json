@@ -1,0 +1,14 @@
+[
+  {
+    "request": { "protocol": "graphql", "server": "main", "operationType": "query", "operationName": "PollReport" },
+    "expected": { "data": { "report": { "state": "GENERATING" } } }
+  },
+  {
+    "request": { "protocol": "graphql", "server": "main", "operationType": "query", "operationName": "PollReport" },
+    "expected": { "data": { "report": { "state": "READY" } } }
+  },
+  {
+    "request": { "protocol": "graphql", "server": "main", "operationType": "query", "operationName": "PollReport" },
+    "expected": { "data": { "report": { "state": "READY" } } }
+  }
+]

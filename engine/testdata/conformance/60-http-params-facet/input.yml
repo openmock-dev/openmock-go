@@ -1,0 +1,29 @@
+openmock: 0.2.0
+info:
+  title: params facet matching (captured path parameters)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /users/{id}
+        scenarios:
+          # The params facet matches values captured from the path template
+          # (spec §6.1); first-match-wins puts the specific id before the default.
+          - name: special
+            when:
+              params:
+                id: "42"
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: special
+          - name: default
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: default

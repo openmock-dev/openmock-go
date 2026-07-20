@@ -1,0 +1,23 @@
+openmock: 0.2.0
+info:
+  title: List-valued response headers (repeated Set-Cookie field lines)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /login/{account}
+        scenarios:
+          # A list-valued response header emits one field line per item, in
+          # order (spec §4.6/§7) — Set-Cookie is the header that cannot be
+          # comma-joined. Each item is templated independently.
+          - name: issue-cookies
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+                Set-Cookie:
+                  - "session={{params.account}}; Path=/; HttpOnly"
+                  - "theme=dark; Path=/"
+              body:
+                ok: true

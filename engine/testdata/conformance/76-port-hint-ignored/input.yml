@@ -1,0 +1,22 @@
+openmock: 0.2.0
+info:
+  title: The port hint never changes what a document means
+# `port` is a default binding hint for serving implementations (spec §3.3,
+# docs/serving.md). Like descriptorSet and schema, it never changes matching
+# or responses: engines that honor it, override it, or ignore it entirely
+# MUST produce the same response for the normalized request.
+servers:
+  - name: users-api
+    type: http
+    port: 8081
+    operations:
+      - method: GET
+        path: /ping
+        scenarios:
+          - name: pong
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                message: pong

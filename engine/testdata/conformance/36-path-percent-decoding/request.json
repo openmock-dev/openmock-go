@@ -1,0 +1,5 @@
+{
+  "server": "main",
+  "method": "GET",
+  "path": "/files/a%2Fb+c.txt"
+}

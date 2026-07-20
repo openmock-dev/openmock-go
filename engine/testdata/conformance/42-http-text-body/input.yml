@@ -1,0 +1,48 @@
+openmock: 0.2.0
+info:
+  title: Scalar HTTP bodies match the scalar body form
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /ping
+        scenarios:
+          # A text/plain body normalizes to the string scalar "ping". A dotted
+          # path never resolves inside a scalar payload, so the map form MUST
+          # NOT match it.
+          - name: map-form
+            when:
+              body:
+                text: ping
+            response:
+              status: 200
+              body:
+                view: map-form
+
+          # The scalar form compares the whole payload — a different value MUST
+          # NOT match.
+          - name: wrong-value
+            when:
+              body: pong
+            response:
+              status: 200
+              body:
+                view: wrong-value
+
+          # Scalar form matches the whole payload by canonical string form, and
+          # bare {{request.body}} renders it (spec §6.1/§9.1).
+          - name: ping
+            when:
+              body: ping
+            response:
+              status: 200
+              headers:
+                Content-Type: text/plain
+              body: "pong {{request.body}}"
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

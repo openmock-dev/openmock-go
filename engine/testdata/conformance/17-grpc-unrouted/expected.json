@@ -1,0 +1,9 @@
+{
+  "status": "UNIMPLEMENTED",
+  "error": "No operation matched the request.",
+  "trailers": {
+    "openmock": "unrouted",
+    "openmock-service": "shop.v1.PaymentService",
+    "openmock-rpc": "Charge"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "protocol": "graphql",
+  "server": "main",
+  "operationType": "query",
+  "operationName": "GetOrder",
+  "variables": { "orderId": "42" }
+}

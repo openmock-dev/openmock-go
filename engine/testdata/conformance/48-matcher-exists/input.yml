@@ -1,0 +1,46 @@
+openmock: 0.2.0
+info:
+  title: exists matchers (presence and absence)
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /status
+        scenarios:
+          # The request carries no X-Debug header, so requiring its presence
+          # MUST NOT match.
+          - name: debug
+            when:
+              headers:
+                X-Debug:
+                  exists: true
+            response:
+              status: 200
+              body:
+                view: debug
+
+          # Presence of X-Trace (any value), absence of X-Debug, and absence of
+          # the page query parameter — all satisfied by the request.
+          - name: traced-no-debug
+            when:
+              headers:
+                X-Trace:
+                  exists: true
+                X-Debug:
+                  exists: false
+              query:
+                page:
+                  exists: false
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: traced-no-debug
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

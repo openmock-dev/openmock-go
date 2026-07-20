@@ -1,0 +1,9 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/ping",
+  "headers": {
+    "Content-Type": "text/plain"
+  },
+  "body": "ping"
+}

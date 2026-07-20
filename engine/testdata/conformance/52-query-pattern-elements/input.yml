@@ -1,0 +1,56 @@
+openmock: 0.2.0
+info:
+  title: pattern matchers inside query occurrence lists
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /orders
+        scenarios:
+          # List elements may be pattern matchers, matched positionally against
+          # the occurrence sequence (spec §6.1) — but a wrong pattern at any
+          # position MUST NOT match.
+          - name: wrong-pattern
+            when:
+              query:
+                ids:
+                  - pattern: "[a-z]+"
+                  - "2"
+            response:
+              status: 200
+              body:
+                view: wrong-pattern
+
+          # Count stays exact even with matchers: one element cannot match two
+          # occurrences.
+          - name: wrong-count
+            when:
+              query:
+                ids:
+                  - pattern: "[0-9]+"
+            response:
+              status: 200
+              body:
+                view: wrong-count
+
+          # Mixed elements: a pattern for the first occurrence, an exact string
+          # for the second.
+          - name: matched
+            when:
+              query:
+                ids:
+                  - pattern: "[0-9]+"
+                  - "2"
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                view: matched
+
+          - name: default
+            response:
+              status: 200
+              body:
+                view: default

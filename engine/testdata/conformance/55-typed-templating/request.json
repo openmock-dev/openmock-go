@@ -1,0 +1,15 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/echo",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "count": 3,
+    "active": true,
+    "meta": { "src": "web" },
+    "tags": ["a", "b"],
+    "name": "Ada"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "server": "main",
+  "method": "POST",
+  "path": "/carts",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "items": [
+      { "id": "a1", "qty": 2 },
+      { "id": "b2" }
+    ],
+    "user.role": "admin"
+  }
+}
