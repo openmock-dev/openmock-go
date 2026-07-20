@@ -1,0 +1,96 @@
+openmock: 0.2.0
+
+# GraphQL mocks. Operations are addressed by operationType (query | mutation,
+# query is the default) + operationName — the name a client gives its request
+# document — and match on variables / headers facets. Responses carry `data`,
+# `errors`, or both (a partial response); there is no status field, because
+# GraphQL signals failure in-band (spec §7.4). The mock is serveable without
+# any GraphQL schema.
+
+info:
+  title: Order service GraphQL mock
+  version: 1.0.0
+  description: Queries, a mutation, declared errors, and calls-based polling.
+
+# The type system behind this mock lives in 07-graphql.graphql (SDL).
+# Attaching it here is OPTIONAL and never changes what the document means —
+# engines MAY ignore it, and MAY use it to serve introspection, validate
+# incoming query documents, or check response shapes (spec §3.5).
+servers:
+  - name: main
+    type: graphql
+    schema: ./09-graphql.graphql
+    # Extension keys are permitted on server objects too (spec §11);
+    # an engine that doesn't recognise this ignores it.
+    x-acme-introspection: false
+    operations:
+      # A query with header matching and a declared error scenario.
+      # operationType defaults to query, but writing it is clearer.
+      - operationType: query
+        operationName: GetOrder
+        scenarios:
+          - name: admin-view
+            when:
+              headers:
+                x-role: admin
+            response:
+              data:
+                order:
+                  id: "{{request.variables.orderId}}"
+                  state: SHIPPED
+                  internalNotes: fragile — handle with care
+
+          # A partial response: `data` holds what resolved (a null order) and
+          # `errors` explains what did not.
+          - name: missing-order
+            when:
+              variables:
+                orderId: "0"
+            response:
+              data:
+                order: null
+              errors:
+                - message: order not found
+                  path: [order]
+                  extensions:
+                    code: NOT_FOUND
+
+          - name: default-view
+            response:
+              data:
+                order:
+                  id: "{{request.variables.orderId}}"
+                  state: SHIPPED
+
+      # A mutation. Routing considers operationType, so a mutation named like a
+      # query would still resolve to the right operation.
+      - operationType: mutation
+        operationName: CreateOrder
+        scenarios:
+          - name: created
+            response:
+              data:
+                createOrder:
+                  id: "{{faker.string.uuid}}"
+                  state: CREATED
+                  note: "{{request.variables.input.note}}"
+
+      # The calls facet works on GraphQL exactly as on HTTP and gRPC; the counter
+      # is keyed by operationType + operationName, i.e. per operation.
+      - operationType: query
+        operationName: GetReport
+        scenarios:
+          - name: generating
+            when:
+              calls:
+                max: 2
+            response:
+              data:
+                report:
+                  state: GENERATING
+          - name: ready
+            response:
+              data:
+                report:
+                  state: READY
+                  url: https://example.com/report.pdf

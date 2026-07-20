@@ -1,7 +1,7 @@
 # Examples
 
-Runnable OpenMock documents. `01`–`07` are HTTP; `08` is gRPC. Build the
-binary and serve one, then curl it:
+Runnable OpenMock documents. `01`–`07` are HTTP; `08` is gRPC; `09` is
+GraphQL. Build the binary and serve one, then curl it:
 
 ```console
 $ make build                                   # produces ./bin/openmock
@@ -25,7 +25,7 @@ $ curl -s -X POST localhost:4400/reset  # clear call counters
 
 `01`–`05` are the reference HTTP examples from the
 [spec repo](https://github.com/openmock-dev/openmock/tree/main/examples);
-`06`–`07` add HTTP features they don't cover; `08` is gRPC.
+`06`–`07` add HTTP features they don't cover; `08` is gRPC; `09` is GraphQL.
 
 ---
 
@@ -177,3 +177,39 @@ The admin API's `GET /servers` lists the gRPC server with `"transport":
 "grpc"` and a null `url` (gRPC has no dialable base URL). `grpcurl` is
 optional — the wire behavior is covered by `server/grpc_test.go`, which
 drives the server with a dynamic gRPC client.
+
+## 09-graphql.yml — a GraphQL mock
+
+A `type: graphql` server, served over HTTP (GraphQL-over-HTTP). A document's
+sole GraphQL server takes the stable default port **3001**. POST a
+`{query, operationName, variables}` body to any path on the port; the
+operation type and name are read from the query. The optional `schema` field
+is not needed to serve.
+
+```console
+$ ./bin/openmock serve examples/09-graphql.yml
+serving "main" on graphql http://127.0.0.1:3001
+admin API on http://127.0.0.1:4400
+
+# a query with variables templating:
+$ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
+    '{"query":"query GetOrder { order { id state } }","variables":{"orderId":"42"}}'
+{"data":{"order":{"id":"42","state":"SHIPPED"}}}
+
+# a header facet selects the admin scenario (richer payload):
+$ curl -s localhost:3001/ -H 'Content-Type: application/json' -H 'x-role: admin' -d \
+    '{"query":"query GetOrder { order { id } }","variables":{"orderId":"7"}}'
+
+# a mutation (routing is on operationType + operationName):
+$ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
+    '{"query":"mutation CreateOrder { createOrder { id } }","variables":{"input":{"note":"rush"}}}'
+
+# a partial response — data plus errors — for a missing order:
+$ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
+    '{"query":"query GetOrder { order { id } }","variables":{"orderId":"0"}}'
+{"data":{"order":null},"errors":[{"message":"order not found","path":["order"],...}]}
+```
+
+Failures are in-band: a matched-but-erroring or unrouted request still returns
+HTTP `200` with an `errors` array (spec §7.4/§10). A malformed request (no
+`query`, bad JSON) returns `400`.
