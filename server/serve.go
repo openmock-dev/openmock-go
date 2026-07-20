@@ -157,6 +157,38 @@ func Serve(doc *engine.Document, opts Options) (*Server, error) {
 			s.serveGRPC(gs, l)
 			opts.logf("serving %q on grpc://%s:%d", srv.Name, dialHost(s.bindHost), port)
 
+		case engine.ServerGraphQL:
+			// GraphQL is served over HTTP; its messages are already JSON, so
+			// no schema is needed to serve (spec §3.5). A schema, when present
+			// and loadable, adds introspection; a missing/unreadable one is a
+			// diagnostic, not an error (spec §3.5).
+			var introspection *graphqlIntrospection
+			if srv.Schema != "" {
+				gi, err := loadGraphQLSchema(opts.BaseDir, srv)
+				if err != nil {
+					opts.logf("server %q: schema not loaded (%v); serving without introspection", srv.Name, err)
+				} else {
+					introspection = gi
+				}
+			}
+			rp := byName[srv.Name]
+			l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.bindHost, rp.port))
+			if err != nil {
+				closeAll()
+				return nil, fmt.Errorf("binding %q to port %d (%s): %w", srv.Name, rp.port, rp.source, err)
+			}
+			listeners = append(listeners, l)
+			port := l.Addr().(*net.TCPAddr).Port
+			s.topology = append(s.topology, s.graphqlInfo(srv.Name, port))
+			hs := &http.Server{Handler: newGraphQLHandler(s.engine, srv.Name, introspection)}
+			s.mockSrvs = append(s.mockSrvs, hs)
+			s.serveOn(hs, l)
+			schemaNote := ""
+			if introspection != nil {
+				schemaNote = " (introspection enabled)"
+			}
+			opts.logf("serving %q on graphql http://%s:%d%s", srv.Name, dialHost(s.bindHost), port, schemaNote)
+
 		default:
 			s.topology = append(s.topology, unboundInfo(srv))
 			opts.logf("server %q (%s) declared but not served: that protocol is not supported yet", srv.Name, srv.Type)
@@ -273,6 +305,14 @@ func (s *Server) httpInfo(name string, port int) ServerInfo {
 func (s *Server) grpcInfo(name string, port int) ServerInfo {
 	transport := "grpc"
 	return ServerInfo{Name: name, Type: "grpc", Transport: &transport, Port: &port, URL: nil}
+}
+
+// graphqlInfo reports a bound GraphQL server. It is served over HTTP, so it
+// has a dialable url; transport names the protocol a client speaks there.
+func (s *Server) graphqlInfo(name string, port int) ServerInfo {
+	transport := "graphql"
+	url := fmt.Sprintf("http://%s:%d", dialHost(s.bindHost), port)
+	return ServerInfo{Name: name, Type: "graphql", Transport: &transport, Port: &port, URL: &url}
 }
 
 func unboundInfo(srv *engine.Server) ServerInfo {

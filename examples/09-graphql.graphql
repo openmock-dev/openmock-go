@@ -1,0 +1,48 @@
+# The GraphQL type system behind examples/07-graphql.yml.
+#
+# OpenMock documents never require a GraphQL schema — data, errors, and
+# variables are written as native YAML (spec §4.3, §7.4). This file shows the
+# schema that mock implements, and is what the document attaches via
+# `graphql.schema` (spec §3.5). Engines MAY ignore it, and MAY use it to serve
+# introspection, validate incoming query documents, or check response shapes.
+#
+# Note that the operationName each mock operation declares (GetOrder,
+# CreateOrder, GetReport) is the name a *client* gives its request document —
+# it does not appear in this schema. The root fields the clients select
+# (order, createOrder, report) do.
+
+type Query {
+  order(id: ID!): Order
+  report: Report!
+}
+
+type Mutation {
+  createOrder(input: CreateOrderInput!): Order!
+}
+
+enum OrderState {
+  CREATED
+  PAID
+  SHIPPED
+}
+
+type Order {
+  id: ID!
+  state: OrderState!
+  internalNotes: String
+  note: String
+}
+
+input CreateOrderInput {
+  note: String
+}
+
+enum ReportState {
+  GENERATING
+  READY
+}
+
+type Report {
+  state: ReportState!
+  url: String
+}

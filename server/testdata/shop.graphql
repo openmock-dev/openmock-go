@@ -1,0 +1,24 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Query {
+  "Fetch an order by id."
+  order(id: ID!): Order
+}
+
+type Mutation {
+  createOrder(note: String): Order
+}
+
+type Order {
+  id: ID!
+  state: State!
+}
+
+enum State {
+  CREATED
+  PAID
+  SHIPPED
+}

@@ -61,14 +61,16 @@ type resolvedPort struct {
 
 // typeDefaultPort returns the stable default port for a server type
 // (docs/serving.md §2), and whether the type has one this adapter can serve.
-// Only http and grpc are served today; graphql/websocket have reserved
-// defaults but no adapter yet.
+// HTTP, gRPC, and GraphQL are served today; websocket has a reserved default
+// but no adapter yet.
 func typeDefaultPort(t engine.ServerType) (int, bool) {
 	switch t {
 	case engine.ServerHTTP:
 		return defaultHTTPPort, true
 	case engine.ServerGRPC:
 		return defaultGRPCPort, true
+	case engine.ServerGraphQL:
+		return defaultGraphQLPort, true
 	default:
 		return 0, false
 	}
