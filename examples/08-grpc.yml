@@ -1,0 +1,108 @@
+openmock: 0.2.0
+
+# gRPC mocks. Operations are addressed by service + rpc, declare their call
+# type explicitly (unary | server-streaming), and match on metadata / message
+# facets. Messages are native YAML following the proto3 JSON mapping (spec
+# §4.2) — the mock is serveable without any .proto file.
+
+info:
+  title: Order service gRPC mock
+  version: 1.0.0
+  description: Unary calls, a streaming watch, errors, and calls-based polling.
+
+# The schema behind this mock lives in 06-grpc.proto; 06-grpc.binpb is the
+# descriptor set compiled from it (see the .proto header for the protoc/buf
+# commands). Attaching it here is OPTIONAL and never changes what the document
+# means — engines MAY ignore it, and MAY use it to serve binary protobuf,
+# server reflection, or message validation (spec §3.4).
+servers:
+  - name: main
+    type: grpc
+    descriptorSet: ./08-grpc.binpb
+    # Extension keys are permitted on server objects too (spec §11);
+    # an engine that doesn't recognise this ignores it.
+    x-acme-reflection: false
+    operations:
+      # Unary RPC with metadata matching and an error scenario.
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: admin-view
+            when:
+              metadata:
+                x-role: admin
+            response:
+              status: OK
+              metadata:
+                x-cache: MISS
+              message:
+                id: "{{request.message.orderId}}"
+                state: SHIPPED
+                internalNotes: fragile — handle with care
+
+          - name: missing-order
+            when:
+              message:
+                orderId: "0"
+            response:
+              status: NOT_FOUND
+              error: order not found
+
+          - name: default-view
+            response:
+              status: OK
+              message:
+                id: "{{request.message.orderId}}"
+                state: SHIPPED
+
+      # Server-streaming RPC: messages are emitted in order.
+      - service: shop.v1.OrderService
+        rpc: WatchOrder
+        type: server-streaming
+        scenarios:
+          - name: lifecycle
+            response:
+              status: OK
+              messages:
+                - event: CREATED
+                  orderId: "{{request.message.orderId}}"
+                - event: PAID
+                  orderId: "{{request.message.orderId}}"
+                - event: SHIPPED
+                  orderId: "{{request.message.orderId}}"
+
+      # A stream that fails mid-way: two events, then the stream terminates
+      # with a non-OK status.
+      - service: shop.v1.OrderService
+        rpc: WatchInventory
+        type: server-streaming
+        scenarios:
+          - name: interrupted
+            response:
+              status: UNAVAILABLE
+              error: inventory feed lost upstream connection
+              messages:
+                - level: "42"
+                - level: "41"
+
+      # The calls facet works on gRPC exactly as on HTTP; the counter is keyed by
+      # service + rpc (no path parameters), i.e. per operation.
+      - service: shop.v1.ReportService
+        rpc: GetReport
+        type: unary
+        scenarios:
+          - name: generating
+            when:
+              calls:
+                max: 2
+            response:
+              status: OK
+              message:
+                state: GENERATING
+          - name: ready
+            response:
+              status: OK
+              message:
+                state: READY
+                url: https://example.com/report.pdf

@@ -2,15 +2,17 @@
 
 Go reference implementation of [OpenMock](https://github.com/openmock-dev/openmock).
 
-**Status: engine + HTTP server implemented.** The `engine` package is a
-working parse → match → render core that passes every case in
+**Status: engine + HTTP and gRPC servers implemented.** The `engine` package
+is a working parse → match → render core that passes every case in
 [openmock-dev/openmock](https://github.com/openmock-dev/openmock)'s
 conformance corpus, across all four v0.2 protocols (HTTP, gRPC, GraphQL,
-WebSocket). The `server` package serves a document over **HTTP** — the
-protocol adapter plus the standalone-server profile of `docs/serving.md`
+WebSocket). The `server` package serves a document over **HTTP and gRPC** —
+the protocol adapters plus the standalone-server profile of `docs/serving.md`
 (port resolution and the admin API) — and `openmock serve` runs it from the
-command line. gRPC, GraphQL, and WebSocket serving are not built yet; a
-document's non-HTTP servers are reported as unbound until their adapters
+command line. gRPC serving uses a server's `descriptorSet` (spec §3.4) to
+translate protobuf wire bytes to and from the engine's message model.
+GraphQL and WebSocket serving are not built yet; those servers (and a gRPC
+server with no descriptorSet) are reported as unbound until their adapters
 land.
 
 OpenMock is first a **specification**; this repository is its Go reference
@@ -38,13 +40,14 @@ draws between the resolution engine and the roles that serve it:
 engine/       pure parse -> match -> render core; no I/O, no server
               assumption. Importable standalone by an embedding host.
               Implemented: HTTP, gRPC, GraphQL, and WebSocket, conformant.
-server/       protocol adapters + serving (HTTP implemented; gRPC, GraphQL,
-              WebSocket to follow) over the engine, plus the admin/discovery
-              API from docs/serving.md, for the standalone-server role.
+server/       protocol adapters + serving (HTTP and gRPC implemented;
+              GraphQL, WebSocket to follow) over the engine, plus the
+              admin/discovery API from docs/serving.md, for the
+              standalone-server role.
 cmd/openmock/ the CLI: `serve` implemented; validate, test to follow.
 ```
 
-## Serving over HTTP
+## Serving
 
 ```console
 $ openmock serve mocks.yml
@@ -54,12 +57,17 @@ admin API on http://127.0.0.1:4400
 
 - **Ports** resolve per `docs/serving.md` §2: `--port name=n` (repeatable) or
   `OPENMOCK_PORTS="a=3000,b=3001"`, then the document's `port` hint, then the
-  stable default `3000` for a document's sole HTTP server, else an
-  OS-ephemeral port. A configured/hinted port that can't bind fails loudly.
+  stable default for a document's sole server of a type (`http` 3000, `grpc`
+  3003), else an OS-ephemeral port. A configured/hinted port that can't bind
+  fails loudly.
 - **Admin API** on `4400` (`--admin-port`, `0` for ephemeral), loopback by
   default: `GET /servers` (the resolved topology), `GET /health`,
   `POST /reset` (clear call counters).
 - **`--bind`** sets the interface (default `127.0.0.1`; `0.0.0.0` to expose).
+- **gRPC** servers are served when they carry a `descriptorSet` (spec §3.4) —
+  the compiled `FileDescriptorSet` the transport uses to decode/encode
+  protobuf. A gRPC server without one is listed unbound. Point a client at it
+  with that same file as a protoset (see [`examples/`](./examples)).
 
 ### Try it
 

@@ -1,7 +1,7 @@
 # Examples
 
-Runnable OpenMock documents for the HTTP server. Build the binary and serve
-one, then curl it:
+Runnable OpenMock documents. `01`–`07` are HTTP; `08` is gRPC. Build the
+binary and serve one, then curl it:
 
 ```console
 $ make build                                   # produces ./bin/openmock
@@ -25,7 +25,7 @@ $ curl -s -X POST localhost:4400/reset  # clear call counters
 
 `01`–`05` are the reference HTTP examples from the
 [spec repo](https://github.com/openmock-dev/openmock/tree/main/examples);
-`06`–`07` add features they don't cover.
+`06`–`07` add HTTP features they don't cover; `08` is gRPC.
 
 ---
 
@@ -136,3 +136,44 @@ $ curl -s localhost:3000/health      # {"service":"users","status":"ok"}
 $ curl -s localhost:3001/health      # {"service":"orders","status":"ok"}
 $ curl -s localhost:4400/servers     # both servers, with their resolved ports
 ```
+
+## 08-grpc.yml — a gRPC mock
+
+A `type: grpc` server. It attaches a compiled descriptor set
+(`08-grpc.binpb`, built from `08-grpc.proto`), which the server uses to
+decode and encode protobuf on the wire. A document's sole gRPC server takes
+the stable default port **3003**.
+
+```console
+$ ./bin/openmock serve examples/08-grpc.yml
+serving "main" on grpc://127.0.0.1:3003
+admin API on http://127.0.0.1:4400
+```
+
+Call it with [`grpcurl`](https://github.com/fullstorydev/grpcurl), using the
+same `.binpb` as its protoset (so no `.proto` or server reflection is needed):
+
+```console
+$ grpcurl -protoset examples/08-grpc.binpb -plaintext \
+    -d '{"orderId":"42"}' localhost:3003 shop.v1.OrderService/GetOrder
+{"id": "42", "state": "SHIPPED"}
+
+# metadata selects the admin scenario, which returns an x-cache header:
+$ grpcurl -protoset examples/08-grpc.binpb -plaintext \
+    -H 'x-role: admin' -d '{"orderId":"7"}' \
+    localhost:3003 shop.v1.OrderService/GetOrder
+
+# orderId 0 -> a NOT_FOUND status with a templated message:
+$ grpcurl -protoset examples/08-grpc.binpb -plaintext \
+    -d '{"orderId":"0"}' localhost:3003 shop.v1.OrderService/GetOrder
+ERROR: Code: NotFound  Message: order 0 not found
+
+# server-streaming: three ordered events:
+$ grpcurl -protoset examples/08-grpc.binpb -plaintext \
+    -d '{"orderId":"42"}' localhost:3003 shop.v1.OrderService/WatchOrder
+```
+
+The admin API's `GET /servers` lists the gRPC server with `"transport":
+"grpc"` and a null `url` (gRPC has no dialable base URL). `grpcurl` is
+optional — the wire behavior is covered by `server/grpc_test.go`, which
+drives the server with a dynamic gRPC client.
