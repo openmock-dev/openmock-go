@@ -1,0 +1,56 @@
+openmock: 0.2.0
+
+# Response delays and author-declared error responses. Note the difference
+# between a declared error (a scenario with a 4xx/5xx status) and OpenMock's
+# own synthetic fallbacks (501 unmatched / 404 unrouted).
+
+info:
+  title: Delays and errors
+  version: 1.0.0
+  description: Latency simulation and error responses.
+
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /orders/{id}
+        scenarios:
+          # Simulate a slow backend for a specific order.
+          - name: slow-order
+            when:
+              params:
+                id: "slow"
+            response:
+              status: 200
+              delay: 1500
+              headers:
+                Content-Type: application/json
+              body:
+                id: slow
+                status: processing
+
+          # Simulate an upstream failure for a specific order.
+          - name: failing-order
+            when:
+              params:
+                id: "boom"
+            response:
+              status: 503
+              delay: 250
+              headers:
+                Content-Type: application/json
+                Retry-After: "5"
+              body:
+                error: upstream unavailable
+                code: SERVICE_UNAVAILABLE
+
+          # Not-found error for anything else.
+          - name: not-found
+            response:
+              status: 404
+              headers:
+                Content-Type: application/json
+              body:
+                error: order not found
+                id: "{{params.id}}"

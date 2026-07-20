@@ -1,0 +1,24 @@
+openmock: 0.2.0
+
+# The smallest useful OpenMock document: one operation, one default scenario.
+# Any GET /health request returns 200 with a native-YAML body.
+
+info:
+  title: Minimal REST mock
+  version: 1.0.0
+  description: A single health-check endpoint.
+
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: GET
+        path: /health
+        scenarios:
+          - name: healthy
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                status: ok

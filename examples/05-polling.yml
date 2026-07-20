@@ -1,0 +1,70 @@
+openmock: 0.2.0
+
+# Stateful polling with the `calls` facet. The engine keeps a call counter per
+# operation and concrete path, so /v1/file/abc and /v1/file/def advance
+# independently. `calls: 1` is shorthand for {min: 1, max: 1}; bounds are
+# inclusive and either may be omitted ({min: 5} = the 5th call onward).
+#
+# Manual flow this mocks:
+#   1. GET  /v1/file/{hash}   -> 404 (file unknown, 1st call)
+#   2. POST /v1/file/upload   -> 202 (accepted for analysis)
+#   3. GET  /v1/file/{hash}   -> 200 pending (calls 2-3)
+#   4. GET  /v1/file/{hash}   -> 200 done (4th call onward, default scenario)
+
+info:
+  title: File-analysis polling mock
+  version: 1.0.0
+  description: Simulates an async analyze-then-poll API.
+
+servers:
+  - name: main
+    type: http
+    operations:
+      - method: POST
+        path: /v1/file/upload
+        scenarios:
+          - name: accepted
+            response:
+              status: 202
+              headers:
+                Content-Type: application/json
+              body:
+                status: queued
+
+      - method: GET
+        path: /v1/file/{hash}
+        scenarios:
+          - name: not-uploaded-yet
+            when:
+              calls: 1
+            response:
+              status: 404
+              headers:
+                Content-Type: application/json
+              body:
+                error: not_found
+
+          - name: analyzing
+            when:
+              calls:
+                min: 2
+                max: 3
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                hash: "{{params.hash}}"
+                status: pending
+
+          # Default scenario: catches the 4th call and every one after it.
+          # This is how "repeat the final response forever" is written.
+          - name: done
+            response:
+              status: 200
+              headers:
+                Content-Type: application/json
+              body:
+                hash: "{{params.hash}}"
+                status: done
+                verdict: clean

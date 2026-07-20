@@ -61,6 +61,37 @@ admin API on http://127.0.0.1:4400
   `POST /reset` (clear call counters).
 - **`--bind`** sets the interface (default `127.0.0.1`; `0.0.0.0` to expose).
 
+### Try it
+
+```console
+$ make build
+$ ./bin/openmock serve examples/01-minimal.yml &
+$ curl -s localhost:3000/health          # {"status":"ok"}
+$ curl -s localhost:4400/servers         # the resolved topology
+```
+
+Or run the scripted, self-contained walkthrough (starts the server, curls a
+polling lifecycle and the admin API, shuts down):
+
+```console
+$ make demo
+```
+
+The [`examples/`](./examples) directory has seven runnable documents —
+path params, templating and faker, delays and errors, the `calls` polling
+lifecycle, `exists`/`pattern` matchers with multi-line `Set-Cookie`, and a
+two-server topology — each with copy-paste curl commands in
+[`examples/README.md`](./examples/README.md).
+
+## Development
+
+```console
+$ make            # list targets
+$ make build      # ./bin/openmock
+$ make check      # gofmt check + go vet + go test -race (what CI runs)
+$ make run EXAMPLE=examples/05-polling.yml   # serve an example in the foreground
+```
+
 ## Using the engine directly
 
 ```go
