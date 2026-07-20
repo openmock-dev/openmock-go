@@ -3,13 +3,22 @@ package engine
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // Engine resolves normalized requests against a parsed Document, maintaining
 // the per-operation call counters the calls facet reads (spec §6.3). The
 // zero value is not usable; use New.
+//
+// An Engine is safe for concurrent use: a serving adapter may call Resolve
+// from many goroutines at once (one per in-flight request). The call
+// counters are the only mutable state, and mu guards them — a plain map
+// increment would both race and, worse, trigger Go's fatal "concurrent map
+// writes" panic under real load.
 type Engine struct {
-	doc      *Document
+	doc *Document
+
+	mu       sync.Mutex
 	counters map[string]int
 }
 
@@ -31,8 +40,10 @@ func (e *Engine) Resolve(req *Request) map[string]any {
 	req.Params = params
 
 	key := counterKey(server, op, req)
+	e.mu.Lock()
 	e.counters[key]++
 	calls := e.counters[key]
+	e.mu.Unlock()
 
 	scenario := selectScenario(op, req, calls)
 	if scenario == nil {
