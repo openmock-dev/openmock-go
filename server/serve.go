@@ -159,7 +159,18 @@ func Serve(doc *engine.Document, opts Options) (*Server, error) {
 
 		case engine.ServerGraphQL:
 			// GraphQL is served over HTTP; its messages are already JSON, so
-			// no schema is needed to serve (spec §3.5).
+			// no schema is needed to serve (spec §3.5). A schema, when present
+			// and loadable, adds introspection; a missing/unreadable one is a
+			// diagnostic, not an error (spec §3.5).
+			var introspection *graphqlIntrospection
+			if srv.Schema != "" {
+				gi, err := loadGraphQLSchema(opts.BaseDir, srv)
+				if err != nil {
+					opts.logf("server %q: schema not loaded (%v); serving without introspection", srv.Name, err)
+				} else {
+					introspection = gi
+				}
+			}
 			rp := byName[srv.Name]
 			l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.bindHost, rp.port))
 			if err != nil {
@@ -169,10 +180,14 @@ func Serve(doc *engine.Document, opts Options) (*Server, error) {
 			listeners = append(listeners, l)
 			port := l.Addr().(*net.TCPAddr).Port
 			s.topology = append(s.topology, s.graphqlInfo(srv.Name, port))
-			hs := &http.Server{Handler: newGraphQLHandler(s.engine, srv.Name)}
+			hs := &http.Server{Handler: newGraphQLHandler(s.engine, srv.Name, introspection)}
 			s.mockSrvs = append(s.mockSrvs, hs)
 			s.serveOn(hs, l)
-			opts.logf("serving %q on graphql http://%s:%d", srv.Name, dialHost(s.bindHost), port)
+			schemaNote := ""
+			if introspection != nil {
+				schemaNote = " (introspection enabled)"
+			}
+			opts.logf("serving %q on graphql http://%s:%d%s", srv.Name, dialHost(s.bindHost), port, schemaNote)
 
 		default:
 			s.topology = append(s.topology, unboundInfo(srv))

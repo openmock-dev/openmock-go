@@ -3,6 +3,7 @@ module github.com/openmock-dev/openmock-go
 go 1.25.0
 
 require (
+	github.com/graph-gophers/graphql-go v1.10.2
 	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1

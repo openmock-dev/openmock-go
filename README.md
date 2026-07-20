@@ -69,7 +69,10 @@ admin API on http://127.0.0.1:4400
   with that same file as a protoset (see [`examples/`](./examples)).
 - **GraphQL** servers are served over HTTP (GraphQL-over-HTTP): POST (or GET) a
   `{query, operationName, variables}` request to the port; the operation type
-  and name are read from the query document. No schema is needed to serve.
+  and name are read from the query document. No schema is needed to serve —
+  but if a server declares a `schema` (spec §3.5), it powers **introspection**
+  (`__schema`/`__type`), so GraphiQL/Apollo/Postman can explore the mock. A
+  missing or invalid schema is a warning, not an error.
 
 ### Try it
 

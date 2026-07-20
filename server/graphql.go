@@ -22,10 +22,13 @@ import (
 type graphqlHandler struct {
 	engine     *engine.Engine
 	serverName string
+	// introspection answers __schema/__type queries from the server's schema
+	// (spec §3.5); nil when the server has no usable schema.
+	introspection *graphqlIntrospection
 }
 
-func newGraphQLHandler(eng *engine.Engine, serverName string) *graphqlHandler {
-	return &graphqlHandler{engine: eng, serverName: serverName}
+func newGraphQLHandler(eng *engine.Engine, serverName string, introspection *graphqlIntrospection) *graphqlHandler {
+	return &graphqlHandler{engine: eng, serverName: serverName, introspection: introspection}
 }
 
 // gqlRequest is a GraphQL-over-HTTP request body.
@@ -39,6 +42,16 @@ func (h *graphqlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	req, ok := h.readRequest(w, r)
 	if !ok {
 		return
+	}
+
+	// Introspection is answered from the schema, before the engine — it is an
+	// added capability, not a change to how normal requests resolve (spec
+	// §3.5). Only available when the server has a usable schema.
+	if h.introspection != nil {
+		if resp, isIntrospection := h.introspection.answer(req.Query, req.Variables); isIntrospection {
+			writeJSON(w, http.StatusOK, resp)
+			return
+		}
 	}
 
 	// Derive the operation type and name from the query document (spec §4.3);

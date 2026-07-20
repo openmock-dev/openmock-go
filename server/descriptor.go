@@ -71,15 +71,21 @@ func loadDescriptor(baseDir string, srv *engine.Server) (*grpcSchema, error) {
 	return schema, nil
 }
 
-// resolveDescriptorPath joins ref onto baseDir and rejects a path that
-// escapes baseDir (spec §14): absolute paths and ".." traversal are refused,
-// and a remote URL is not dereferenced.
+// resolveDescriptorPath resolves a gRPC descriptorSet path (spec §14).
 func resolveDescriptorPath(baseDir, ref string) (string, error) {
+	return confinedPath(baseDir, ref, "descriptorSet")
+}
+
+// confinedPath joins ref onto baseDir and rejects a path that escapes it
+// (spec §14): absolute paths and ".." traversal are refused, and a remote URL
+// is not dereferenced. field names the document field for diagnostics
+// (descriptorSet, schema).
+func confinedPath(baseDir, ref, field string) (string, error) {
 	if strings.Contains(ref, "://") {
-		return "", fmt.Errorf("descriptorSet %q: remote URLs are not loaded", ref)
+		return "", fmt.Errorf("%s %q: remote URLs are not loaded", field, ref)
 	}
 	if filepath.IsAbs(ref) {
-		return "", fmt.Errorf("descriptorSet %q: absolute paths are not allowed", ref)
+		return "", fmt.Errorf("%s %q: absolute paths are not allowed", field, ref)
 	}
 	if baseDir == "" {
 		baseDir = "."
@@ -89,7 +95,7 @@ func resolveDescriptorPath(baseDir, ref string) (string, error) {
 	// joined must be cleanBase itself or sit beneath it.
 	rel, err := filepath.Rel(cleanBase, joined)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("descriptorSet %q escapes the document directory", ref)
+		return "", fmt.Errorf("%s %q escapes the document directory", field, ref)
 	}
 	return joined, nil
 }

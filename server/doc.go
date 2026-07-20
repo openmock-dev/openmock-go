@@ -7,7 +7,10 @@
 // wire bytes to and from the engine's proto3-JSON message model with dynamic
 // messages — no generated stubs. GraphQL is served over HTTP
 // (GraphQL-over-HTTP): the adapter derives the operation type and name from
-// the query document and returns the engine's data/errors/extensions.
+// the query document and returns the engine's data/errors/extensions. When a
+// GraphQL server carries a schema (spec §3.5), it is loaded to answer
+// introspection queries (__schema/__type) so tooling can explore the mock;
+// this is additive and never changes how a normal request resolves.
 //
 // [Serve] runs the standalone-server serving profile of openmock-dev/openmock's
 // docs/serving.md — port resolution (§2), one listener per HTTP, gRPC, or

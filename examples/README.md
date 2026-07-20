@@ -213,3 +213,21 @@ $ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
 Failures are in-band: a matched-but-erroring or unrouted request still returns
 HTTP `200` with an `errors` array (spec §7.4/§10). A malformed request (no
 `query`, bad JSON) returns `400`.
+
+This example declares a `schema` (`09-graphql.graphql`), so the mock answers
+**introspection** — point GraphiQL/Apollo/Postman at `http://localhost:3001/`
+to explore it, or curl it directly:
+
+```console
+# the schema's types, queryType, mutationType (the IntrospectionQuery tools send):
+$ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
+    '{"query":"{ __schema { queryType { name } types { name kind } } }"}'
+
+# a single type by name:
+$ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
+    '{"query":"{ __type(name: \"Order\") { name kind fields { name } } }"}'
+```
+
+Introspection is additive — it never changes how a normal request resolves
+(spec §3.5) — and the `schema` field is optional: without it, everything above
+still works except introspection.
