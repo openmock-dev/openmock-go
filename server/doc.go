@@ -1,11 +1,13 @@
-// Package server adapts the engine to network protocols.
+// Package server adapts the engine to network protocols and serves it.
 //
-// It provides thin protocol adapters (HTTP first, with gRPC, GraphQL, and
-// WebSocket to follow per openmock-dev/openmock's roadmap) that map real
-// requests onto the engine and the engine's responses back onto the wire.
-// It also provides the admin/discovery API described in
-// openmock-dev/openmock's docs/serving.md (GET /servers, GET /health,
-// POST /reset) for the standalone-server role.
+// [Handler] is the HTTP protocol adapter (milestone 2): a thin http.Handler
+// that maps a real HTTP request onto the engine's normalized request and the
+// engine's response back onto the wire. [Serve] runs the standalone-server
+// serving profile of openmock-dev/openmock's docs/serving.md — port
+// resolution (§2), an http.Server per HTTP server in a document, and the
+// admin/discovery API (§3: GET /servers, GET /health, POST /reset).
 //
-// Not yet implemented. This package is currently a scaffold placeholder.
+// Only HTTP is served so far; gRPC, GraphQL, and WebSocket adapters follow
+// per the roadmap, and a document's non-HTTP servers are reported as unbound
+// in the admin topology until then.
 package server
