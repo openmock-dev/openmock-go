@@ -7,8 +7,10 @@ import (
 )
 
 // Request is a normalized incoming request (spec §4). Which fields apply
-// depends on Protocol. Params is not part of the wire request: the engine
-// fills it in during routing (spec §5.2).
+// depends on Protocol. Params is not part of the wire request: routing
+// derives it from the matched path template (spec §5.2) on an internal
+// copy — Resolve never mutates the Request it is given, and any Params
+// value the caller sets is ignored.
 type Request struct {
 	Protocol string
 	Server   string

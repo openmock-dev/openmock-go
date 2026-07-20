@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 )
@@ -11,35 +10,52 @@ import (
 // zero value is not usable; use New.
 //
 // An Engine is safe for concurrent use: a serving adapter may call Resolve
-// from many goroutines at once (one per in-flight request). The call
-// counters are the only mutable state, and mu guards them — a plain map
-// increment would both race and, worse, trigger Go's fatal "concurrent map
-// writes" panic under real load.
+// (and Reset) from many goroutines at once. The call counters are the only
+// mutable state, and mu guards them — a plain map increment would both race
+// and, worse, trigger Go's fatal "concurrent map writes" panic under real
+// load.
 type Engine struct {
 	doc *Document
 
 	mu       sync.Mutex
-	counters map[string]int
+	counters map[counterKey]int
 }
 
 // New creates an Engine for doc, with fresh call counters.
 func New(doc *Document) *Engine {
-	return &Engine{doc: doc, counters: map[string]int{}}
+	return &Engine{doc: doc, counters: map[counterKey]int{}}
+}
+
+// Reset clears the call counters, as if no request had been resolved yet.
+// It is the engine-side "reset state" capability of docs/serving.md §0 —
+// what a standalone server projects as POST /reset and a test framework
+// calls between tests. Spec §6.3 keeps counters monotonic during a run and
+// leaves the run boundary to the embedder; Reset is how an embedder ends
+// one run and starts the next. Safe for concurrent use with Resolve.
+func (e *Engine) Reset() {
+	e.mu.Lock()
+	e.counters = map[counterKey]int{}
+	e.mu.Unlock()
 }
 
 // Resolve routes req, advances the matched operation's call counter, selects
 // the first matching scenario, and renders its response (spec §8). The
 // result is ready to marshal as the protocol's normalized response (see
 // conformance/README.md's expected.json shapes). An unrouted or unmatched
-// request yields the synthetic response of spec §10.
+// request yields the synthetic response of spec §10. Resolve never mutates
+// req.
 func (e *Engine) Resolve(req *Request) map[string]any {
 	server, op, params, ok := e.route(req)
 	if !ok {
 		return unroutedResponse(req)
 	}
-	req.Params = params
+	// Matching and rendering read the captured path parameters through the
+	// request; work on a shallow copy so the caller's value stays untouched.
+	local := *req
+	local.Params = params
+	req = &local
 
-	key := counterKey(server, op, req)
+	key := keyFor(server, op, req)
 	e.mu.Lock()
 	e.counters[key]++
 	calls := e.counters[key]
@@ -118,20 +134,27 @@ func (e *Engine) targetServer(req *Request) *Server {
 	return nil
 }
 
-// counterKey identifies the (server, operation, concrete address) tuple the
-// call counter is keyed by (spec §6.3).
-func counterKey(server *Server, op *Operation, req *Request) string {
+// counterKey identifies the (server, operation, concrete address) tuple a
+// call counter is keyed by (spec §6.3). A struct rather than a joined
+// string: server names (and paths, connections) are only constrained to be
+// non-empty, so no join delimiter is collision-proof.
+type counterKey struct {
+	server string
+	a, b   string
+}
+
+func keyFor(server *Server, op *Operation, req *Request) counterKey {
 	switch server.Type {
 	case ServerHTTP:
-		return fmt.Sprintf("%s|%s %s", server.Name, strings.ToUpper(req.Method), req.Path)
+		return counterKey{server.Name, strings.ToUpper(req.Method), req.Path}
 	case ServerGRPC:
-		return fmt.Sprintf("%s|%s/%s", server.Name, op.Service, op.RPC)
+		return counterKey{server.Name, op.Service, op.RPC}
 	case ServerGraphQL:
-		return fmt.Sprintf("%s|%s %s", server.Name, op.OperationType, op.OperationName)
+		return counterKey{server.Name, op.OperationType, op.OperationName}
 	case ServerWebSocket:
-		return fmt.Sprintf("%s|%s|%s", server.Name, req.Path, req.Connection)
+		return counterKey{server.Name, req.Path, req.Connection}
 	}
-	return ""
+	return counterKey{}
 }
 
 func selectScenario(op *Operation, req *Request, calls int) *Scenario {
