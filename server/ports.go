@@ -59,29 +59,43 @@ type resolvedPort struct {
 	source portSource
 }
 
-// resolvePorts resolves a listening port for every HTTP server in the
-// document, first-match-wins over the four rungs of docs/serving.md §2:
-// explicit config, the document hint, the sole-server default (only when the
-// document declares exactly one server of a type), then an ephemeral
-// fallback. Non-HTTP servers are not resolved here — this adapter binds only
-// HTTP (they are surfaced as unbound in the admin topology).
+// typeDefaultPort returns the stable default port for a server type
+// (docs/serving.md §2), and whether the type has one this adapter can serve.
+// Only http and grpc are served today; graphql/websocket have reserved
+// defaults but no adapter yet.
+func typeDefaultPort(t engine.ServerType) (int, bool) {
+	switch t {
+	case engine.ServerHTTP:
+		return defaultHTTPPort, true
+	case engine.ServerGRPC:
+		return defaultGRPCPort, true
+	default:
+		return 0, false
+	}
+}
+
+// resolvePorts resolves a listening port for every servable server in the
+// document (HTTP and gRPC), first-match-wins over the four rungs of
+// docs/serving.md §2: explicit config, the document hint, the sole-server
+// default (only when the document declares exactly one server of a type),
+// then an ephemeral fallback. Servers of not-yet-served types are skipped
+// here (surfaced as unbound in the admin topology).
 //
 // It enforces the profile's static rules: two servers on the same concrete
 // port is an error, and a config/hint port that collides with the admin port
 // is an error. The "auto-assigned port must avoid a reserved default" rule is
 // satisfied structurally because the only auto-assignment is bind-0.
 func resolvePorts(doc *engine.Document, explicit map[string]int, adminPort int) ([]resolvedPort, error) {
-	httpCount := 0
+	countByType := map[engine.ServerType]int{}
 	for _, s := range doc.Servers {
-		if s.Type == engine.ServerHTTP {
-			httpCount++
-		}
+		countByType[s.Type]++
 	}
 
 	var resolved []resolvedPort
 	used := map[int]string{} // concrete port -> server name
 	for _, s := range doc.Servers {
-		if s.Type != engine.ServerHTTP {
+		def, servable := typeDefaultPort(s.Type)
+		if !servable {
 			continue
 		}
 		rp := resolvedPort{name: s.Name}
@@ -90,8 +104,8 @@ func resolvePorts(doc *engine.Document, explicit map[string]int, adminPort int) 
 			rp.port, rp.source = explicit[s.Name], sourceConfig
 		case s.Port != nil:
 			rp.port, rp.source = *s.Port, sourceHint
-		case httpCount == 1:
-			rp.port, rp.source = defaultHTTPPort, sourceDefault
+		case countByType[s.Type] == 1:
+			rp.port, rp.source = def, sourceDefault
 		default:
 			rp.port, rp.source = 0, sourceEphemeral
 		}

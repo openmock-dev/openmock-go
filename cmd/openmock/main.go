@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -86,6 +87,7 @@ func runServe(args []string) error {
 		Ports:              f.ports,
 		AdminPort:          f.adminPort,
 		AdminPortEphemeral: f.adminEph,
+		BaseDir:            filepath.Dir(f.file),
 		Logf:               func(format string, a ...any) { fmt.Fprintf(os.Stderr, format+"\n", a...) },
 	})
 	if err != nil {
