@@ -1,0 +1,88 @@
+openmock: 0.2.0
+
+# WebSocket mocks. Operations are addressed by the connection path (with
+# {param} segments, as in HTTP); every message the client sends resolves
+# against the operation's scenarios to a reply of zero or more messages,
+# optionally followed by a close (spec §5.8, §7.5). v0.1 covers
+# client-initiated exchanges only — the mock speaks only in reply.
+
+info:
+  title: Order feed WebSocket mock
+  version: 1.0.0
+  description: A scripted feed — subscribe/ack, heartbeats, a close, and a per-connection welcome.
+
+servers:
+  - name: main
+    type: websocket
+    operations:
+      # Clients connect to /ws/orders/{id} and exchange JSON messages. The
+      # connection-scoped facets (params, query, headers) match the values fixed
+      # at establishment; message matches each inbound message.
+      - path: /ws/orders/{id}
+        scenarios:
+          # The calls counter is keyed per (operation, connection), so every
+          # connection's first message — whatever it is — is answered with a
+          # welcome. Placed first so nothing below can consume call 1.
+          - name: welcome
+            when:
+              calls: 1
+            response:
+              messages:
+                - type: welcome
+                  orderId: "{{params.id}}"
+
+          # Heartbeats are deliberately ignored: an empty messages list replies
+          # with nothing and keeps the connection open.
+          - name: heartbeat
+            when:
+              message:
+                type: ping
+            response:
+              messages: []
+
+          # Admin connections (matched on the upgrade request's headers) get the
+          # internal view.
+          - name: admin-status
+            when:
+              headers:
+                x-role: admin
+              message:
+                type: status
+            response:
+              messages:
+                - type: status
+                  orderId: "{{params.id}}"
+                  state: SHIPPED
+                  internalNotes: fragile — handle with care
+
+          - name: status
+            when:
+              message:
+                type: status
+            response:
+              messages:
+                - type: status
+                  orderId: "{{params.id}}"
+                  state: SHIPPED
+
+          # Reply, then close the connection normally.
+          - name: bye
+            when:
+              message:
+                type: bye
+            response:
+              messages:
+                - type: goodbye
+              close:
+                code: 1000
+                reason: client requested close
+
+          # Default: an application-shaped error reply. WebSocket has no
+          # per-message status; failures are in-band messages or a close with an
+          # application code (4000–4999).
+          - name: unknown-command
+            response:
+              messages:
+                - type: error
+                  error: unknown command
+                  received: "{{request.message.type}}"
