@@ -50,13 +50,16 @@ func (o Options) logf(format string, args ...any) {
 
 // ServerInfo is one entry of the admin GET /servers topology
 // (docs/serving.md §3). Port and URL are null (nil) for a server this
-// process does not bind.
+// process does not bind. Note, when present, is the human-readable reason a
+// server is not bound — an extra field, which §3 permits ("Servers MAY add
+// fields; consumers MUST ignore fields they do not know").
 type ServerInfo struct {
 	Name      string  `json:"name"`
 	Type      string  `json:"type"`
 	Transport *string `json:"transport"`
 	Port      *int    `json:"port"`
 	URL       *string `json:"url"`
+	Note      string  `json:"note,omitempty"`
 }
 
 // Server is a running standalone HTTP server for one document: an http.Server
@@ -128,19 +131,23 @@ func Serve(doc *engine.Document, opts Options) (*Server, error) {
 			opts.logf("serving %q on http://%s:%d", srv.Name, dialHost(s.bindHost), port)
 
 		case engine.ServerGRPC:
-			// A gRPC server is served only with a descriptorSet — its schema
-			// is what lets the transport decode and encode wire bytes (spec
-			// §3.4). Without a loadable one, leave it unbound with a
-			// diagnostic, exactly as if the field were absent.
+			// A gRPC server is served only with a descriptorSet — protobuf is
+			// not self-describing, so without the schema the wire cannot be
+			// decoded (spec §3.4). The document stays valid either way; the
+			// server is left unbound with a diagnostic here and a note in the
+			// admin topology.
 			if srv.DescriptorSet == "" {
-				s.topology = append(s.topology, unboundInfo(srv))
-				opts.logf("server %q (grpc) declared but not served: no descriptorSet (needed to decode protobuf)", srv.Name)
+				note := "not served: standalone gRPC serving requires a descriptorSet (a compiled FileDescriptorSet, spec §3.4)"
+				s.topology = append(s.topology, unboundInfo(srv, note))
+				opts.logf("server %q (grpc) %s", srv.Name, note)
+				opts.logf("  hint: compile one with `protoc --include_imports --descriptor_set_out=schema.binpb your.proto` (or `buf build -o schema.binpb`) and set `descriptorSet: ./schema.binpb` — see examples/08-grpc.yml")
 				continue
 			}
 			schema, err := loadDescriptor(opts.BaseDir, srv)
 			if err != nil {
-				s.topology = append(s.topology, unboundInfo(srv))
-				opts.logf("server %q (grpc) declared but not served: %v", srv.Name, err)
+				note := fmt.Sprintf("not served: descriptorSet could not be loaded (%v)", err)
+				s.topology = append(s.topology, unboundInfo(srv, note))
+				opts.logf("server %q (grpc) %s", srv.Name, note)
 				continue
 			}
 			rp := byName[srv.Name]
@@ -207,8 +214,9 @@ func Serve(doc *engine.Document, opts Options) (*Server, error) {
 			opts.logf("serving %q on ws://%s:%d", srv.Name, dialHost(s.bindHost), port)
 
 		default:
-			s.topology = append(s.topology, unboundInfo(srv))
-			opts.logf("server %q (%s) declared but not served: that protocol is not supported yet", srv.Name, srv.Type)
+			note := "not served: that protocol is not supported yet"
+			s.topology = append(s.topology, unboundInfo(srv, note))
+			opts.logf("server %q (%s) %s", srv.Name, srv.Type, note)
 		}
 	}
 
@@ -340,8 +348,10 @@ func (s *Server) websocketInfo(name string, port int) ServerInfo {
 	return ServerInfo{Name: name, Type: "websocket", Transport: &transport, Port: &port, URL: &url}
 }
 
-func unboundInfo(srv *engine.Server) ServerInfo {
-	return ServerInfo{Name: srv.Name, Type: string(srv.Type)}
+// unboundInfo reports a declared server this process does not bind, with a
+// note saying why (surfaced in the admin GET /servers topology).
+func unboundInfo(srv *engine.Server, note string) ServerInfo {
+	return ServerInfo{Name: srv.Name, Type: string(srv.Type), Note: note}
 }
 
 // dialHost turns a bind host into one a client can dial: a wildcard bind

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -228,6 +229,92 @@ func TestGRPCSoleServerDefaultPort(t *testing.T) {
 	}
 	if len(resolved) != 1 || resolved[0].port != defaultGRPCPort || resolved[0].source != sourceDefault {
 		t.Fatalf("resolved = %+v, want grpc 'main' on 3003 from sourceDefault", resolved)
+	}
+}
+
+// TestGRPCWithoutDescriptorUnboundWithNote pins the descriptorSet visibility
+// contract: the document is valid and Serve succeeds either way (spec §3.4 —
+// the field never changes what a document means), but a gRPC server without a
+// loadable descriptor is not bound, and the admin topology entry says why via
+// its note field (null transport/port/url, per docs/serving.md §3).
+func TestGRPCWithoutDescriptorUnboundWithNote(t *testing.T) {
+	cases := []struct {
+		name       string
+		descriptor string // "" = field absent; else an unreadable path
+		wantInNote string
+	}{
+		{"no descriptorSet", "", "requires a descriptorSet"},
+		{"unreadable descriptorSet", "does-not-exist.binpb", "could not be loaded"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			descriptorLine := ""
+			if tc.descriptor != "" {
+				descriptorLine = "\n    descriptorSet: " + tc.descriptor
+			}
+			doc, err := engine.Parse([]byte(`
+openmock: 0.2.0
+servers:
+  - name: main
+    type: grpc` + descriptorLine + `
+    operations:
+      - service: shop.v1.OrderService
+        rpc: GetOrder
+        type: unary
+        scenarios:
+          - name: ok
+            response:
+              status: OK
+              message: {ok: true}
+`))
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			srv, err := Serve(doc, Options{AdminPortEphemeral: true, BaseDir: "testdata"})
+			if err != nil {
+				t.Fatalf("Serve must succeed with an unbound grpc server, got: %v", err)
+			}
+			defer func() {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				srv.Shutdown(ctx)
+				srv.Wait()
+			}()
+
+			top := srv.Topology()
+			if len(top) != 1 {
+				t.Fatalf("topology = %+v, want one entry", top)
+			}
+			info := top[0]
+			if info.Transport != nil || info.Port != nil || info.URL != nil {
+				t.Errorf("unbound entry has non-null transport/port/url: %+v", info)
+			}
+			if info.Note == "" || !strings.Contains(info.Note, tc.wantInNote) {
+				t.Errorf("note = %q, want it to mention %q", info.Note, tc.wantInNote)
+			}
+		})
+	}
+}
+
+// TestBoundServerHasNoNote pins that the note field is absent for a server
+// that is actually bound (omitempty in the admin JSON).
+func TestBoundServerHasNoNote(t *testing.T) {
+	doc, err := engine.Parse([]byte(grpcDoc))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	srv, err := Serve(doc, Options{AdminPortEphemeral: true, Ports: map[string]int{"main": freeTCPPort(t)}, BaseDir: "testdata"})
+	if err != nil {
+		t.Fatalf("Serve: %v", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+		srv.Wait()
+	}()
+	if info := srv.Topology()[0]; info.Note != "" {
+		t.Errorf("bound server carries a note: %q", info.Note)
 	}
 }
 

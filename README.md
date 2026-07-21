@@ -62,10 +62,16 @@ admin API on http://127.0.0.1:4400
   default: `GET /servers` (the resolved topology), `GET /health`,
   `POST /reset` (clear call counters).
 - **`--bind`** sets the interface (default `127.0.0.1`; `0.0.0.0` to expose).
-- **gRPC** servers are served when they carry a `descriptorSet` (spec §3.4) —
-  the compiled `FileDescriptorSet` the transport uses to decode/encode
-  protobuf. A gRPC server without one is listed unbound. Point a client at it
-  with that same file as a protoset (see [`examples/`](./examples)).
+- **gRPC** servers need a `descriptorSet` (spec §3.4) — the compiled
+  `FileDescriptorSet` the transport uses to decode/encode protobuf, which is
+  not self-describing. The field is optional in the *document* (the document
+  stays valid, and the engine/embedding hosts never need it), but it is
+  **effectively required for standalone gRPC serving**: a gRPC server without
+  one is not bound — it's listed in `GET /servers` with a `note` saying why,
+  and the startup log shows how to fix it. Compile one with
+  `protoc --include_imports --descriptor_set_out=schema.binpb your.proto`
+  (or `buf build -o schema.binpb`), then point a client at the mock using
+  that same file as a protoset (see [`examples/`](./examples)).
 - **GraphQL** servers are served over HTTP (GraphQL-over-HTTP): POST (or GET) a
   `{query, operationName, variables}` request to the port; the operation type
   and name are read from the query document. No schema is needed to serve —
