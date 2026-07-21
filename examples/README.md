@@ -1,7 +1,7 @@
 # Examples
 
 Runnable OpenMock documents. `01`–`07` are HTTP; `08` is gRPC; `09` is
-GraphQL. Build the binary and serve one, then curl it:
+GraphQL; `10` is WebSocket. Build the binary and serve one, then curl it:
 
 ```console
 $ make build                                   # produces ./bin/openmock
@@ -25,7 +25,8 @@ $ curl -s -X POST localhost:4400/reset  # clear call counters
 
 `01`–`05` are the reference HTTP examples from the
 [spec repo](https://github.com/openmock-dev/openmock/tree/main/examples);
-`06`–`07` add HTTP features they don't cover; `08` is gRPC; `09` is GraphQL.
+`06`–`07` add HTTP features they don't cover; `08` is gRPC, `09` GraphQL, `10`
+WebSocket.
 
 ---
 
@@ -231,3 +232,36 @@ $ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
 Introspection is additive — it never changes how a normal request resolves
 (spec §3.5) — and the `schema` field is optional: without it, everything above
 still works except introspection.
+
+## 10-websocket.yml — a WebSocket mock
+
+A `type: websocket` server, served over an HTTP upgrade. A document's sole
+WebSocket server takes the stable default port **3002**. A client connects to
+a path (`/ws/orders/{id}`); each message it sends is resolved into zero or more
+reply messages and an optional close. The call counter is per connection, so
+every connection's scripted exchange starts fresh.
+
+```console
+$ ./bin/openmock serve examples/10-websocket.yml
+serving "main" on ws://127.0.0.1:3002
+admin API on http://127.0.0.1:4400
+```
+
+Drive it with any WebSocket client (`websocat` shown; the connection path
+carries the `{id}` param):
+
+```console
+$ websocat ws://127.0.0.1:3002/ws/orders/42
+{"type":"status"}
+{"orderId":"42","type":"welcome"}      # first message on a connection -> welcome (calls:1)
+{"type":"status"}
+{"orderId":"42","state":"SHIPPED","type":"status"}
+{"type":"ping"}                        # a heartbeat is ignored (empty reply), connection stays open
+{"type":"bye"}
+{"type":"goodbye"}                     # reply, then the server closes with code 1000
+```
+
+An unroutable path is **refused at establishment** — the upgrade returns a
+`404` with the `unrouted` synthetic rather than accepting the connection (spec
+§5.9). A matched message with no scenario/default gets a single `unmatched`
+reply message while the connection stays open (spec §10.1).

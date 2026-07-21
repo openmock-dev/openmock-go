@@ -68,6 +68,17 @@ func (e *Engine) Resolve(req *Request) map[string]any {
 	return render(server, op, scenario.Response, req)
 }
 
+// Routes reports whether req routes to an operation (spec §8 step 1): a target
+// server is selected and one of its operations matches the request's address.
+// It has no side effects — in particular it never advances a call counter — so
+// a transport can use it to admit or refuse a connection without consuming a
+// call. A WebSocket server uses it to refuse an unroutable path at
+// establishment (spec §5.9) rather than accepting the connection first.
+func (e *Engine) Routes(req *Request) bool {
+	_, _, _, ok := e.route(req)
+	return ok
+}
+
 func (e *Engine) route(req *Request) (*Server, *Operation, map[string]string, bool) {
 	server := e.targetServer(req)
 	if server == nil {
