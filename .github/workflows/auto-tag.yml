@@ -1,11 +1,20 @@
 name: Auto-tag
 
-# Cuts a new semver tag on every push to main, which in turn triggers
-# release.yml (GoReleaser) and docker.yml (GHCR) via their tag triggers.
+# Cuts a new semver tag on every push to main, then explicitly dispatches
+# release.yml (GoReleaser) and docker.yml (GHCR) for that tag.
+#
+# It can't just rely on their `push: tags:` triggers: a tag pushed with the
+# default GITHUB_TOKEN (as the tag_version step below does) does not fire
+# *other* workflows' push triggers. That's a deliberate GitHub anti-recursion
+# safeguard, not a bug, and the documented way around it for same-repo
+# workflows is to dispatch the next workflow explicitly with workflow_dispatch
+# (which IS exempted). So this workflow does that itself, rather than relying
+# on a chained push event that will never come.
+#
 # The bump is decided from conventional-commit prefixes on the commits since
 # the last tag (feat -> minor, fix/other -> patch, "BREAKING CHANGE"/"!" ->
 # major); this repo's commit style doesn't consistently use those prefixes,
-# so the default is a patch bump — every merge to main is a release unless
+# so the default is a patch bump: every merge to main is a release unless
 # the commit message contains "[skip release]".
 on:
   push:
@@ -13,6 +22,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   tag:
@@ -30,6 +40,12 @@ jobs:
           default_bump: patch
           release_branches: main
 
-      - name: log
+      - name: dispatch release + docker
         if: steps.tag_version.outputs.new_tag
-        run: echo "tagged ${{ steps.tag_version.outputs.new_tag }} (${{ steps.tag_version.outputs.release_type }})"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag_version.outputs.new_tag }}
+        run: |
+          echo "tagged $TAG (${{ steps.tag_version.outputs.release_type }})"
+          gh workflow run release.yml --ref "$TAG"
+          gh workflow run docker.yml --ref "$TAG"

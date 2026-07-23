@@ -5,6 +5,10 @@ on:
     branches: [main]
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
+  # A tag pushed with the default GITHUB_TOKEN (as auto-tag.yml does) does not
+  # fire the tags: push trigger above -- see release.yml -- so auto-tag.yml
+  # dispatches this explicitly after tagging.
+  workflow_dispatch:
 
 permissions:
   contents: read

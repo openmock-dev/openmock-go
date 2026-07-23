@@ -141,7 +141,9 @@ and pull request:
 ([`.github/workflows/auto-tag.yml`](./.github/workflows/auto-tag.yml)) bumps
 a semver tag: a `feat:` commit bumps minor, a `BREAKING CHANGE`/`!` commit
 bumps major, anything else bumps patch, so a merge is a release unless its
-commit message contains `[skip release]`. Pushing that tag then runs:
+commit message contains `[skip release]`. It then explicitly dispatches
+(a tag pushed with the workflow's own token doesn't fire other workflows'
+tag triggers, so relying on that chaining silently no-ops):
 
 - [`.github/workflows/release.yml`](./.github/workflows/release.yml): the
   test suite once more as a safety gate, then
