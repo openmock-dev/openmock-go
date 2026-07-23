@@ -161,24 +161,60 @@ commit message contains `[skip release]`. Pushing that tag then runs:
 ## Docker
 
 Images are published to
-[`ghcr.io/openmock-dev/openmock-go`](https://github.com/openmock-dev/openmock-go/pkgs/container/openmock-go):
+[`ghcr.io/openmock-dev/openmock-go`](https://github.com/openmock-dev/openmock-go/pkgs/container/openmock-go).
+`--bind 0.0.0.0` is required in a container — the server's default
+`127.0.0.1` only accepts connections from inside it.
+
+### Ports
+
+The image only fixes one port: the admin API, `4400` by default
+(`EXPOSE`d, and always bound unless `--admin-port` overrides it). The
+protocol servers' ports are resolved per *document* (see
+[Serving](#serving) above) — a fixed `EXPOSE` list can't describe a moving
+target, so pick one of these instead:
+
+**Pin the ports you know you want, and publish exactly those** — the
+straightforward option once you know your document's servers:
 
 ```console
-$ docker run --rm -p 3000:3000 -p 4400:4400 \
+$ docker run --rm \
+    -e OPENMOCK_PORTS="main=3000" \
+    -p 3000:3000 -p 4400:4400 \
     -v "$(pwd)/examples/01-minimal.yml:/mocks/mocks.yml:ro" \
     ghcr.io/openmock-dev/openmock-go:latest \
     serve mocks.yml --bind 0.0.0.0
 $ curl -s localhost:3000/health
 ```
 
-`--bind 0.0.0.0` is required — the server's default `127.0.0.1` only accepts
-connections from inside the container. Map whichever of `3000`–`3003`
-(http/graphql/websocket/grpc) and `4400` (admin) your document's servers
-resolve to (see [Serving](#serving) above); `docker run ... ghcr.io/openmock-dev/openmock-go:latest version`
-prints the build's version/commit/date.
+**`--network host`** (Linux only) sidesteps the mapping problem
+entirely — whatever port a server resolves to (including an
+OS-ephemeral one) is reachable directly at `localhost`:
 
-Image tags: `latest` and `vX.Y.Z`/`X.Y`/`X` track releases; `edge` tracks the
-tip of `main`.
+```console
+$ docker run --rm --network host \
+    -v "$(pwd)/examples/01-minimal.yml:/mocks/mocks.yml:ro" \
+    ghcr.io/openmock-dev/openmock-go:latest serve mocks.yml
+```
+
+**Discover the resolved topology from the admin API** — useful when you
+don't want to precompute ports by hand: publish `4400`, start the
+container, then ask it what it bound:
+
+```console
+$ docker run --rm -p 4400:4400 \
+    -v "$(pwd)/examples/01-minimal.yml:/mocks/mocks.yml:ro" \
+    ghcr.io/openmock-dev/openmock-go:latest \
+    serve mocks.yml --bind 0.0.0.0 &
+$ curl -s localhost:4400/servers   # [{"name":"main","type":"http","port":3000,...}]
+```
+
+This tells you what to `-p`/`OPENMOCK_PORTS` on the *next* run — the
+protocol port itself isn't reachable this way unless it was also
+published.
+
+`docker run ... ghcr.io/openmock-dev/openmock-go:latest version` prints the
+build's version/commit/date. Image tags: `latest` and `vX.Y.Z`/`X.Y`/`X`
+track releases; `edge` tracks the tip of `main`.
 
 [`Dockerfile`](./Dockerfile) is a two-stage, fully distroless build, both
 stages from [Chainguard](https://github.com/chainguard-images) for a minimal,

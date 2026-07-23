@@ -32,8 +32,14 @@ COPY --from=build /out/openmock /usr/local/bin/openmock
 
 WORKDIR /mocks
 
-# http, graphql, websocket, grpc, admin — see docs/serving.md and README.md.
-EXPOSE 3000 3001 3002 3003 4400
+# Only the admin API has a port fixed by this image: it always binds (spec
+# docs/serving.md §3), defaulting to 4400 unless --admin-port overrides it.
+# The protocol servers' ports are resolved per document (flags/env, then the
+# document's port hint, then a stable default only for a document's sole
+# server of a type, else an OS-ephemeral port) — EXPOSE can't describe a
+# moving target, so publish those explicitly at `docker run` time; see the
+# Docker section of README.md.
+EXPOSE 4400
 
 USER 65532:65532
 ENTRYPOINT ["/usr/local/bin/openmock"]
