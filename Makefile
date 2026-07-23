@@ -39,6 +39,23 @@ fmt-check: ## Fail if any file is not gofmt-clean (what CI runs)
 .PHONY: check
 check: fmt-check vet test ## Run the full CI check locally (fmt-check + vet + test)
 
+.PHONY: unit
+unit: ## Run unit tests only (engine + cmd, skipping the conformance corpus)
+	go test -race -skip TestConformance ./engine/... ./cmd/...
+
+.PHONY: conformance
+conformance: ## Run the vendored openmock-dev/openmock conformance corpus
+	go test -race -run TestConformance -v ./engine/...
+
+.PHONY: e2e
+e2e: build ## Run server package + CLI walkthrough end-to-end tests
+	go test -race ./server/...
+	./examples/demo.sh
+
+.PHONY: release-snapshot
+release-snapshot: ## Build all release targets locally without publishing (needs goreleaser)
+	goreleaser release --snapshot --clean --skip=publish
+
 .PHONY: run
 run: build ## Serve an example (override with EXAMPLE=examples/05-polling.yml)
 	$(BIN) serve $(EXAMPLE)

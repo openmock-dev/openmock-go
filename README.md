@@ -1,5 +1,8 @@
 # openmock-go
 
+[![CI](https://github.com/openmock-dev/openmock-go/actions/workflows/ci.yml/badge.svg)](https://github.com/openmock-dev/openmock-go/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/openmock-dev/openmock-go)](https://github.com/openmock-dev/openmock-go/releases)
+
 Go reference implementation of [OpenMock](https://github.com/openmock-dev/openmock).
 
 **Status: engine + all four protocol servers implemented.** The `engine`
@@ -112,8 +115,37 @@ two-server topology — each with copy-paste curl commands in
 $ make            # list targets
 $ make build      # ./bin/openmock
 $ make check      # gofmt check + go vet + go test -race (what CI runs)
+$ make unit       # engine + cmd tests, skipping the conformance corpus
+$ make conformance # the vendored openmock-dev/openmock conformance corpus
+$ make e2e        # server package + CLI walkthrough, end to end
 $ make run EXAMPLE=examples/05-polling.yml   # serve an example in the foreground
 ```
+
+## CI and releases
+
+[`.github/workflows/ci.yml`](./.github/workflows/ci.yml) runs on every push
+and pull request:
+
+- **lint** — `gofmt`, `go vet`, [`govulncheck`](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)
+- **unit** — `engine` and `cmd` tests, minus the conformance corpus
+- **conformance** — the vendored corpus from
+  [openmock-dev/openmock](https://github.com/openmock-dev/openmock)
+- **e2e** — `server` package tests (real HTTP/gRPC/GraphQL/WebSocket
+  listeners) plus the scripted CLI walkthrough (`examples/demo.sh`), on
+  Linux, macOS, and Windows
+- **build** — cross-compiles `cmd/openmock` for every release target
+  (linux/darwin/windows × amd64/arm64) so a platform-specific build break
+  surfaces before a tag is ever cut
+
+Pushing a tag matching `v*.*.*` runs
+[`.github/workflows/release.yml`](./.github/workflows/release.yml): the test
+suite once more as a safety gate, then
+[GoReleaser](https://goreleaser.com) (config: [`.goreleaser.yaml`](./.goreleaser.yaml)),
+which builds `openmock` for Linux, macOS, and Windows (amd64/arm64),
+publishes `.tar.gz`/`.zip` archives and checksums to a GitHub Release, and
+generates release notes from the merged pull requests since the last tag.
+Try it locally without publishing: `make release-snapshot` (needs
+[`goreleaser`](https://goreleaser.com/install/) installed).
 
 ## Using the engine directly
 
