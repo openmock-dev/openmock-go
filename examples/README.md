@@ -30,14 +30,14 @@ WebSocket.
 
 ---
 
-## 01-minimal.yml — a single endpoint
+## 01-minimal.yml: a single endpoint
 
 ```console
 $ curl -s localhost:3000/health
 {"status":"ok"}
 ```
 
-## 02-rest.yml — scenarios, `when`, path params, templating
+## 02-rest.yml: scenarios, `when`, path params, templating
 
 First-match-wins scenarios over `GET /users/{id}` and `POST /users`.
 
@@ -60,7 +60,7 @@ $ curl -s -X POST -H 'Content-Type: application/json' \
 {"error":"name is required"}
 ```
 
-## 03-templating-faker.yml — every placeholder namespace + faker
+## 03-templating-faker.yml: every placeholder namespace + faker
 
 Faker runs in the corpus's deterministic conformance mode, so values are
 stable (`Ada Lovelace`, etc.).
@@ -78,7 +78,7 @@ $ curl -s -X POST -H 'Content-Type: application/json' \
 {"receivedName":"Ada","receivedRole":"admin"}
 ```
 
-## 04-delays-errors.yml — delays and declared errors
+## 04-delays-errors.yml: delays and declared errors
 
 ```console
 $ time curl -s localhost:3000/orders/slow      # declared delay: 1500ms
@@ -93,7 +93,7 @@ Note the difference from OpenMock's own synthetics: an unknown *route* returns
 the `{"openmock":"unrouted",...}` 404; the `order not found` above is an
 author-declared response.
 
-## 05-polling.yml — the `calls` facet (stateful polling)
+## 05-polling.yml: the `calls` facet (stateful polling)
 
 The GET counter is per concrete path, so `abc` and `def` advance
 independently. Reset clears it.
@@ -107,7 +107,7 @@ $ curl -s -X POST localhost:4400/reset   # counters cleared
 $ curl -s -o /dev/null -w '%{http_code}\n' localhost:3000/v1/file/abc   # 404 again
 ```
 
-## 06-cookies-and-matchers.yml — `exists`/`pattern` matchers, multi-line Set-Cookie
+## 06-cookies-and-matchers.yml: `exists`/`pattern` matchers, multi-line Set-Cookie
 
 ```console
 $ curl -s -D - -H 'X-Api-Key: key-123' -X POST localhost:3000/login
@@ -122,7 +122,7 @@ $ curl -s -H 'X-Api-Key: nope' -X POST localhost:3000/login     # bad key -> 403
 {"error":"invalid api key"}
 ```
 
-## 07-multi-server.yml — two HTTP servers in one document
+## 07-multi-server.yml: two HTTP servers in one document
 
 Two servers, addressed by the port they're served on. With two servers of a
 type the sole-server default doesn't apply, so give each a port (the document
@@ -138,7 +138,7 @@ $ curl -s localhost:3001/health      # {"service":"orders","status":"ok"}
 $ curl -s localhost:4400/servers     # both servers, with their resolved ports
 ```
 
-## 08-grpc.yml — a gRPC mock
+## 08-grpc.yml: a gRPC mock
 
 A `type: grpc` server. It attaches a compiled descriptor set
 (`08-grpc.binpb`, built from `08-grpc.proto`), which the server uses to
@@ -188,10 +188,10 @@ $ grpcurl -protoset examples/08-grpc.binpb -plaintext \
 
 The admin API's `GET /servers` lists the gRPC server with `"transport":
 "grpc"` and a null `url` (gRPC has no dialable base URL). `grpcurl` is
-optional — the wire behavior is covered by `server/grpc_test.go`, which
+optional. The wire behavior is covered by `server/grpc_test.go`, which
 drives the server with a dynamic gRPC client.
 
-## 09-graphql.yml — a GraphQL mock
+## 09-graphql.yml: a GraphQL mock
 
 A `type: graphql` server, served over HTTP (GraphQL-over-HTTP). A document's
 sole GraphQL server takes the stable default port **3001**. POST a
@@ -228,7 +228,7 @@ HTTP `200` with an `errors` array (spec §7.4/§10). A malformed request (no
 `query`, bad JSON) returns `400`.
 
 This example declares a `schema` (`09-graphql.graphql`), so the mock answers
-**introspection** — point GraphiQL/Apollo/Postman at `http://localhost:3001/`
+**introspection**: point GraphiQL/Apollo/Postman at `http://localhost:3001/`
 to explore it, or curl it directly:
 
 ```console
@@ -241,11 +241,11 @@ $ curl -s localhost:3001/ -H 'Content-Type: application/json' -d \
     '{"query":"{ __type(name: \"Order\") { name kind fields { name } } }"}'
 ```
 
-Introspection is additive — it never changes how a normal request resolves
-(spec §3.5) — and the `schema` field is optional: without it, everything above
+Introspection is additive. It never changes how a normal request resolves
+(spec §3.5), and the `schema` field is optional: without it, everything above
 still works except introspection.
 
-## 10-websocket.yml — a WebSocket mock
+## 10-websocket.yml: a WebSocket mock
 
 A `type: websocket` server, served over an HTTP upgrade. A document's sole
 WebSocket server takes the stable default port **3002**. A client connects to
@@ -273,7 +273,7 @@ $ websocat ws://127.0.0.1:3002/ws/orders/42
 {"type":"goodbye"}                     # reply, then the server closes with code 1000
 ```
 
-An unroutable path is **refused at establishment** — the upgrade returns a
+An unroutable path is **refused at establishment**: the upgrade returns a
 `404` with the `unrouted` synthetic rather than accepting the connection (spec
 §5.9). A matched message with no scenario/default gets a single `unmatched`
 reply message while the connection stays open (spec §10.1).
