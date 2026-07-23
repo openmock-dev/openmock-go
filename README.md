@@ -137,15 +137,57 @@ and pull request:
   (linux/darwin/windows × amd64/arm64) so a platform-specific build break
   surfaces before a tag is ever cut
 
-Pushing a tag matching `v*.*.*` runs
-[`.github/workflows/release.yml`](./.github/workflows/release.yml): the test
-suite once more as a safety gate, then
-[GoReleaser](https://goreleaser.com) (config: [`.goreleaser.yaml`](./.goreleaser.yaml)),
-which builds `openmock` for Linux, macOS, and Windows (amd64/arm64),
-publishes `.tar.gz`/`.zip` archives and checksums to a GitHub Release, and
-generates release notes from the merged pull requests since the last tag.
-Try it locally without publishing: `make release-snapshot` (needs
-[`goreleaser`](https://goreleaser.com/install/) installed).
+**Tags are cut automatically.** Every push to `main`
+([`.github/workflows/auto-tag.yml`](./.github/workflows/auto-tag.yml)) bumps
+a semver tag: a `feat:` commit bumps minor, a `BREAKING CHANGE`/`!` commit
+bumps major, anything else bumps patch — so a merge is a release unless its
+commit message contains `[skip release]`. Pushing that tag then runs:
+
+- [`.github/workflows/release.yml`](./.github/workflows/release.yml) — the
+  test suite once more as a safety gate, then
+  [GoReleaser](https://goreleaser.com) (config:
+  [`.goreleaser.yaml`](./.goreleaser.yaml)), which builds `openmock` for
+  Linux, macOS, and Windows (amd64/arm64), publishes `.tar.gz`/`.zip`
+  archives and checksums to a GitHub Release, and generates release notes
+  from the merged pull requests since the last tag. Try it locally without
+  publishing: `make release-snapshot` (needs
+  [`goreleaser`](https://goreleaser.com/install/) installed).
+- [`.github/workflows/docker.yml`](./.github/workflows/docker.yml) — builds
+  and pushes the container image (see [Docker](#docker) below) for
+  `linux/amd64` and `linux/arm64` to GHCR, tagged with the full version, its
+  `major.minor` and `major`, and `latest`. The same workflow also runs on
+  every push to `main`, publishing an `edge` tag.
+
+## Docker
+
+Images are published to
+[`ghcr.io/openmock-dev/openmock-go`](https://github.com/openmock-dev/openmock-go/pkgs/container/openmock-go):
+
+```console
+$ docker run --rm -p 3000:3000 -p 4400:4400 \
+    -v "$(pwd)/examples/01-minimal.yml:/mocks/mocks.yml:ro" \
+    ghcr.io/openmock-dev/openmock-go:latest \
+    serve mocks.yml --bind 0.0.0.0
+$ curl -s localhost:3000/health
+```
+
+`--bind 0.0.0.0` is required — the server's default `127.0.0.1` only accepts
+connections from inside the container. Map whichever of `3000`–`3003`
+(http/graphql/websocket/grpc) and `4400` (admin) your document's servers
+resolve to (see [Serving](#serving) above); `docker run ... ghcr.io/openmock-dev/openmock-go:latest version`
+prints the build's version/commit/date.
+
+Image tags: `latest` and `vX.Y.Z`/`X.Y`/`X` track releases; `edge` tracks the
+tip of `main`.
+
+[`Dockerfile`](./Dockerfile) is a two-stage build: the build stage is
+[Chainguard's Wolfi-based Go image](https://github.com/chainguard-images) —
+minimal and continuously patched, so the toolchain that compiles `openmock`
+carries as small a CVE surface as practical — producing a static
+(`CGO_ENABLED=0`) binary. The runtime stage is a plain `debian:bookworm-slim`
+(not distroless): an ordinary Linux userland with a shell, so
+`docker exec -it <container> sh` works for anyone debugging a running mock.
+Build it yourself with `make docker-build` / run with `make docker-run`.
 
 ## Using the engine directly
 
