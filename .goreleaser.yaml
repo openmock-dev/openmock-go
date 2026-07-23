@@ -1,0 +1,53 @@
+version: 2
+
+project_name: openmock
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: openmock
+    main: ./cmd/openmock
+    binary: openmock
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+archives:
+  - id: openmock
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - src: examples/*
+        dst: examples
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github-native
+
+release:
+  github:
+    owner: openmock-dev
+    name: openmock-go
+  prerelease: auto
+  name_template: '{{ .Tag }}'

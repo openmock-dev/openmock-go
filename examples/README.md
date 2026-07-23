@@ -145,6 +145,18 @@ A `type: grpc` server. It attaches a compiled descriptor set
 decode and encode protobuf on the wire. A document's sole gRPC server takes
 the stable default port **3003**.
 
+The `descriptorSet` is optional in the *document* (spec §3.4 — the mock stays
+valid and the engine never needs it), but **standalone gRPC serving requires
+it**: protobuf is not self-describing, so without the schema the wire can't be
+decoded. A gRPC server without one is left unbound, with the reason in the
+startup log and in `GET /servers` as a `note`. Regenerate the descriptor from
+the `.proto` with either:
+
+```console
+$ protoc --include_imports --descriptor_set_out=08-grpc.binpb 08-grpc.proto
+$ buf build 08-grpc.proto -o 08-grpc.binpb     # equivalent, with buf
+```
+
 ```console
 $ ./bin/openmock serve examples/08-grpc.yml
 serving "main" on grpc://127.0.0.1:3003

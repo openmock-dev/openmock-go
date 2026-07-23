@@ -1,8 +1,9 @@
 # openmock-go — common developer tasks.
 # `make` (or `make help`) lists the targets.
 
-BIN     := bin/openmock
-EXAMPLE ?= examples/01-minimal.yml
+BIN        := bin/openmock
+EXAMPLE    ?= examples/01-minimal.yml
+IMAGE      ?= openmock:dev
 
 .DEFAULT_GOAL := help
 
@@ -38,6 +39,33 @@ fmt-check: ## Fail if any file is not gofmt-clean (what CI runs)
 
 .PHONY: check
 check: fmt-check vet test ## Run the full CI check locally (fmt-check + vet + test)
+
+.PHONY: unit
+unit: ## Run unit tests only (engine + cmd, skipping the conformance corpus)
+	go test -race -skip TestConformance ./engine/... ./cmd/...
+
+.PHONY: conformance
+conformance: ## Run the vendored openmock-dev/openmock conformance corpus
+	go test -race -run TestConformance -v ./engine/...
+
+.PHONY: e2e
+e2e: build ## Run server package + CLI walkthrough end-to-end tests
+	go test -race ./server/...
+	./examples/demo.sh
+
+.PHONY: release-snapshot
+release-snapshot: ## Build all release targets locally without publishing (needs goreleaser)
+	goreleaser release --snapshot --clean --skip=publish
+
+.PHONY: docker-build
+docker-build: ## Build the container image locally (override with IMAGE=name:tag)
+	docker build -t $(IMAGE) .
+
+.PHONY: docker-run
+docker-run: ## Run an example through the locally built image (override with EXAMPLE=...)
+	docker run --rm -p 3000:3000 -p 4400:4400 \
+		-v "$$(pwd)/$(EXAMPLE):/mocks/mocks.yml:ro" \
+		$(IMAGE) serve mocks.yml --bind 0.0.0.0
 
 .PHONY: run
 run: build ## Serve an example (override with EXAMPLE=examples/05-polling.yml)

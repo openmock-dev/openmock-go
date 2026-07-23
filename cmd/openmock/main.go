@@ -18,6 +18,14 @@ import (
 	"github.com/openmock-dev/openmock-go/server"
 )
 
+// version, commit, and date are set at build time via -ldflags (see
+// .goreleaser.yaml); they stay at these defaults for `go build`/`go run`.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -29,6 +37,8 @@ func main() {
 			fmt.Fprintln(os.Stderr, "openmock: "+err.Error())
 			os.Exit(1)
 		}
+	case "version", "-v", "--version":
+		fmt.Printf("openmock version %s (commit %s, built %s)\n", version, commit, date)
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -43,6 +53,7 @@ func usage() {
 
 Usage:
   openmock serve <file> [flags]     Serve a document over HTTP
+  openmock version                 Print the version, commit, and build date
 
 Flags for 'serve':
   --bind <addr>          Interface to bind (default 127.0.0.1; 0.0.0.0 to expose)

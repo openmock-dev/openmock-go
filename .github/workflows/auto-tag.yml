@@ -1,0 +1,35 @@
+name: Auto-tag
+
+# Cuts a new semver tag on every push to main, which in turn triggers
+# release.yml (GoReleaser) and docker.yml (GHCR) via their tag triggers.
+# The bump is decided from conventional-commit prefixes on the commits since
+# the last tag (feat -> minor, fix/other -> patch, "BREAKING CHANGE"/"!" ->
+# major); this repo's commit style doesn't consistently use those prefixes,
+# so the default is a patch bump — every merge to main is a release unless
+# the commit message contains "[skip release]".
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+          release_branches: main
+
+      - name: log
+        if: steps.tag_version.outputs.new_tag
+        run: echo "tagged ${{ steps.tag_version.outputs.new_tag }} (${{ steps.tag_version.outputs.release_type }})"

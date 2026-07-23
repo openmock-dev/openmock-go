@@ -1,5 +1,8 @@
 # openmock-go
 
+[![CI](https://github.com/openmock-dev/openmock-go/actions/workflows/ci.yml/badge.svg)](https://github.com/openmock-dev/openmock-go/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/openmock-dev/openmock-go)](https://github.com/openmock-dev/openmock-go/releases)
+
 Go reference implementation of [OpenMock](https://github.com/openmock-dev/openmock).
 
 **Status: engine + all four protocol servers implemented.** The `engine`
@@ -62,10 +65,16 @@ admin API on http://127.0.0.1:4400
   default: `GET /servers` (the resolved topology), `GET /health`,
   `POST /reset` (clear call counters).
 - **`--bind`** sets the interface (default `127.0.0.1`; `0.0.0.0` to expose).
-- **gRPC** servers are served when they carry a `descriptorSet` (spec §3.4):
-  the compiled `FileDescriptorSet` the transport uses to decode/encode
-  protobuf. A gRPC server without one is listed unbound. Point a client at it
-  with that same file as a protoset (see [`examples/`](./examples)).
+- **gRPC** servers need a `descriptorSet` (spec §3.4): the compiled
+  `FileDescriptorSet` the transport uses to decode/encode protobuf, which is
+  not self-describing. The field is optional in the *document* (the document
+  stays valid, and the engine/embedding hosts never need it), but it is
+  **effectively required for standalone gRPC serving**. A gRPC server without
+  one is not bound; it's listed in `GET /servers` with a `note` saying why,
+  and the startup log shows how to fix it. Compile one with
+  `protoc --include_imports --descriptor_set_out=schema.binpb your.proto`
+  (or `buf build -o schema.binpb`), then point a client at the mock using
+  that same file as a protoset (see [`examples/`](./examples)).
 - **GraphQL** servers are served over HTTP (GraphQL-over-HTTP): POST (or GET) a
   `{query, operationName, variables}` request to the port; the operation type
   and name are read from the query document. No schema is needed to serve,
@@ -106,8 +115,116 @@ two-server topology, each with copy-paste curl commands in
 $ make            # list targets
 $ make build      # ./bin/openmock
 $ make check      # gofmt check + go vet + go test -race (what CI runs)
+$ make unit       # engine + cmd tests, skipping the conformance corpus
+$ make conformance # the vendored openmock-dev/openmock conformance corpus
+$ make e2e        # server package + CLI walkthrough, end to end
 $ make run EXAMPLE=examples/05-polling.yml   # serve an example in the foreground
 ```
+
+## CI and releases
+
+[`.github/workflows/ci.yml`](./.github/workflows/ci.yml) runs on every push
+and pull request:
+
+- **lint**: `gofmt`, `go vet`, [`govulncheck`](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)
+- **unit**: `engine` and `cmd` tests, minus the conformance corpus
+- **conformance**: the vendored corpus from
+  [openmock-dev/openmock](https://github.com/openmock-dev/openmock)
+- **e2e**: `server` package tests (real HTTP/gRPC/GraphQL/WebSocket
+  listeners) plus the scripted CLI walkthrough (`examples/demo.sh`), on
+  Linux, macOS, and Windows
+- **build**: cross-compiles `cmd/openmock` for every release target
+  (linux/darwin/windows × amd64/arm64) so a platform-specific build break
+  surfaces before a tag is ever cut
+
+**Tags are cut automatically.** Every push to `main`
+([`.github/workflows/auto-tag.yml`](./.github/workflows/auto-tag.yml)) bumps
+a semver tag: a `feat:` commit bumps minor, a `BREAKING CHANGE`/`!` commit
+bumps major, anything else bumps patch, so a merge is a release unless its
+commit message contains `[skip release]`. Pushing that tag then runs:
+
+- [`.github/workflows/release.yml`](./.github/workflows/release.yml): the
+  test suite once more as a safety gate, then
+  [GoReleaser](https://goreleaser.com) (config:
+  [`.goreleaser.yaml`](./.goreleaser.yaml)), which builds `openmock` for
+  Linux, macOS, and Windows (amd64/arm64), publishes `.tar.gz`/`.zip`
+  archives and checksums to a GitHub Release, and generates release notes
+  from the merged pull requests since the last tag. Try it locally without
+  publishing: `make release-snapshot` (needs
+  [`goreleaser`](https://goreleaser.com/install/) installed).
+- [`.github/workflows/docker.yml`](./.github/workflows/docker.yml): builds
+  and pushes the container image (see [Docker](#docker) below) for
+  `linux/amd64` and `linux/arm64` to GHCR, tagged with the full version, its
+  `major.minor` and `major`, and `latest`. The same workflow also runs on
+  every push to `main`, publishing an `edge` tag.
+
+## Docker
+
+Images are published to
+[`ghcr.io/openmock-dev/openmock-go`](https://github.com/openmock-dev/openmock-go/pkgs/container/openmock-go).
+`--bind 0.0.0.0` is required in a container: the server's default
+`127.0.0.1` only accepts connections from inside it.
+
+### Ports
+
+The image only fixes one port: the admin API, `4400` by default
+(`EXPOSE`d, and always bound unless `--admin-port` overrides it). The
+protocol servers' ports are resolved per *document* (see
+[Serving](#serving) above); a fixed `EXPOSE` list can't describe a moving
+target, so pick one of these instead:
+
+**Pin the ports you know you want, and publish exactly those**: the
+straightforward option once you know your document's servers:
+
+```console
+$ docker run --rm \
+    -e OPENMOCK_PORTS="main=3000" \
+    -p 3000:3000 -p 4400:4400 \
+    -v "$(pwd)/examples/01-minimal.yml:/mocks/mocks.yml:ro" \
+    ghcr.io/openmock-dev/openmock-go:latest \
+    serve mocks.yml --bind 0.0.0.0
+$ curl -s localhost:3000/health
+```
+
+**`--network host`** (Linux only) sidesteps the mapping problem
+entirely: whatever port a server resolves to (including an
+OS-ephemeral one) is reachable directly at `localhost`:
+
+```console
+$ docker run --rm --network host \
+    -v "$(pwd)/examples/01-minimal.yml:/mocks/mocks.yml:ro" \
+    ghcr.io/openmock-dev/openmock-go:latest serve mocks.yml
+```
+
+**Discover the resolved topology from the admin API**: useful when you
+don't want to precompute ports by hand. Publish `4400`, start the
+container, then ask it what it bound:
+
+```console
+$ docker run --rm -p 4400:4400 \
+    -v "$(pwd)/examples/01-minimal.yml:/mocks/mocks.yml:ro" \
+    ghcr.io/openmock-dev/openmock-go:latest \
+    serve mocks.yml --bind 0.0.0.0 &
+$ curl -s localhost:4400/servers   # [{"name":"main","type":"http","port":3000,...}]
+```
+
+This tells you what to `-p`/`OPENMOCK_PORTS` on the *next* run; the
+protocol port itself isn't reachable this way unless it was also
+published.
+
+`docker run ... ghcr.io/openmock-dev/openmock-go:latest version` prints the
+build's version/commit/date. Image tags: `latest` and `vX.Y.Z`/`X.Y`/`X`
+track releases; `edge` tracks the tip of `main`.
+
+[`Dockerfile`](./Dockerfile) is a two-stage, fully distroless build, both
+stages from [Chainguard](https://github.com/chainguard-images) for a minimal,
+continuously patched, low-CVE footprint end to end: the build stage
+(`cgr.dev/chainguard/go`) compiles a static (`CGO_ENABLED=0`) binary, and the
+runtime stage (`cgr.dev/chainguard/static`) is just that binary,
+ca-certificates, and a nonroot user: no shell, no package manager, nothing
+else. The resulting image is a few MB. There's no shell to `docker exec`
+into; debug from `docker logs` or by running the binary directly. Build it
+yourself with `make docker-build` / run with `make docker-run`.
 
 ## Using the engine directly
 
