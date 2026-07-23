@@ -180,14 +180,15 @@ prints the build's version/commit/date.
 Image tags: `latest` and `vX.Y.Z`/`X.Y`/`X` track releases; `edge` tracks the
 tip of `main`.
 
-[`Dockerfile`](./Dockerfile) is a two-stage build: the build stage is
-[Chainguard's Wolfi-based Go image](https://github.com/chainguard-images) —
-minimal and continuously patched, so the toolchain that compiles `openmock`
-carries as small a CVE surface as practical — producing a static
-(`CGO_ENABLED=0`) binary. The runtime stage is a plain `debian:bookworm-slim`
-(not distroless): an ordinary Linux userland with a shell, so
-`docker exec -it <container> sh` works for anyone debugging a running mock.
-Build it yourself with `make docker-build` / run with `make docker-run`.
+[`Dockerfile`](./Dockerfile) is a two-stage, fully distroless build, both
+stages from [Chainguard](https://github.com/chainguard-images) for a minimal,
+continuously patched, low-CVE footprint end to end: the build stage
+(`cgr.dev/chainguard/go`) compiles a static (`CGO_ENABLED=0`) binary, and the
+runtime stage (`cgr.dev/chainguard/static`) is just that binary,
+ca-certificates, and a nonroot user — no shell, no package manager, nothing
+else. The resulting image is a few MB. There's no shell to `docker exec`
+into; debug from `docker logs` or by running the binary directly. Build it
+yourself with `make docker-build` / run with `make docker-run`.
 
 ## Using the engine directly
 
