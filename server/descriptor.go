@@ -84,7 +84,7 @@ func confinedPath(baseDir, ref, field string) (string, error) {
 	if strings.Contains(ref, "://") {
 		return "", fmt.Errorf("%s %q: remote URLs are not loaded", field, ref)
 	}
-	if filepath.IsAbs(ref) {
+	if isAbsRef(ref) {
 		return "", fmt.Errorf("%s %q: absolute paths are not allowed", field, ref)
 	}
 	if baseDir == "" {
@@ -98,4 +98,23 @@ func confinedPath(baseDir, ref, field string) (string, error) {
 		return "", fmt.Errorf("%s %q escapes the document directory", field, ref)
 	}
 	return joined, nil
+}
+
+// isAbsRef reports whether ref is an absolute path, checked the same way on
+// every host OS. filepath.IsAbs alone is not enough: on Windows it only
+// recognizes volume-rooted paths (C:\...), so a POSIX-style descriptorSet or
+// schema path like "/etc/passwd" — absolute on the document author's
+// machine — silently passed the confinement check on a Windows server. A
+// document is portable, so what counts as "absolute" in it can't depend on
+// the OS serving it.
+func isAbsRef(ref string) bool {
+	if strings.HasPrefix(ref, "/") || strings.HasPrefix(ref, `\`) {
+		return true // POSIX-absolute, or Windows rooted-without-drive/UNC.
+	}
+	// A Windows drive-letter path: C:\... or C:/...
+	return len(ref) >= 3 && isDriveLetter(ref[0]) && ref[1] == ':' && (ref[2] == '/' || ref[2] == '\\')
+}
+
+func isDriveLetter(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
 }

@@ -319,9 +319,23 @@ func TestBoundServerHasNoNote(t *testing.T) {
 }
 
 // TestDescriptorPathConfined pins the §14 rule: a descriptorSet path may not
-// escape the document directory.
+// escape the document directory. A document is portable, so what counts as
+// "absolute" can't depend on the OS serving it — a POSIX path like
+// "/etc/passwd" must be rejected on a Windows host too, and a Windows path
+// like `C:\secret.binpb` must be rejected on a Linux/macOS host (regression:
+// this used to rely on filepath.IsAbs, which only recognizes volume-rooted
+// paths on Windows and silently let "/etc/passwd" through there).
 func TestDescriptorPathConfined(t *testing.T) {
-	for _, ref := range []string{"../secret.binpb", "/etc/passwd", "https://evil/x.binpb"} {
+	refs := []string{
+		"../secret.binpb",
+		"/etc/passwd",
+		`\etc\passwd`,
+		`C:\Windows\System32\config`,
+		`C:/Windows/System32/config`,
+		`\\evil-host\share\x.binpb`,
+		"https://evil/x.binpb",
+	}
+	for _, ref := range refs {
 		if _, err := resolveDescriptorPath("testdata", ref); err == nil {
 			t.Errorf("resolveDescriptorPath(%q) = nil error, want rejection", ref)
 		}
